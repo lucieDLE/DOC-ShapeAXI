@@ -489,12 +489,12 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         slicer.app.processEvents()
         if wsl : # if wsl is install
           lib = self.check_lib_wsl()
-        if not lib : # if lib required are not install
-          self.ui.timeLabel.setText(f"Checking if the required librairies are installed, this task may take a moments")
-          messageBox = qt.QMessageBox()
-          text = "Code can't be launch. \nWSL doen't have all the necessary libraries, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading may be blocked by Chrome, this is normal, just authorize it."
-          ready = False
-          messageBox.information(None, "Information", text)
+          if not lib : # if lib required are not install
+            self.ui.timeLabel.setText(f"Checking if the required librairies are installed, this task may take a moments")
+            messageBox = qt.QMessageBox()
+            text = "Code can't be launch. \nWSL doen't have all the necessary libraries, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading may be blocked by Chrome, this is normal, just authorize it."
+            ready = False
+            messageBox.information(None, "Information", text)
         else : # if wsl not install, ask user to install it ans stop process
           messageBox = qt.QMessageBox()
           text = "Code can't be launch. \nWSL is not installed, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading may be blocked by Chrome, this is normal, just authorize it."
@@ -512,7 +512,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         if ready : # checking if environment 'shapeaxi' exist on wsl and if no ask user permission to create and install required lib in it
           self.ui.timeLabel.setText(f"Checking if environnement exist")
           if not self.conda_wsl.condaTestEnv('shapeaxi') : # check is environnement exist, if not ask user the permission to do it
-            userResponse = slicer.util.confirmYesNoDisplay("The environnement to run the segmentation doesn't exist, do you want to create it ? ", windowTitle="Env doesn't exist")
+            userResponse = slicer.util.confirmYesNoDisplay("The environnement to run the classification doesn't exist, do you want to create it ? ", windowTitle="Env doesn't exist")
             if userResponse :
               start_time = time.time()
               previous_time = start_time
@@ -555,11 +555,11 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
               ready = False
           
         if ready : # if everything is ready launch dentalmodelseg on the environnement shapeaxi in wsl
-          model = self.model
-          if self.model == "latest":
-            model = None
-          else :
-            model = self.windows_to_linux_path(model)
+          # model = self.model
+          # if self.model == "latest":
+          #   model = None
+          # else :
+          #   model = self.windows_to_linux_path(model)
 
           name_env = "shapeaxi"
 
@@ -578,13 +578,11 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
           
 
           args = [self.input_dir, self.output, self.data_type]
-          
-          # Print args and path python to be run
-          print(f"cli_path : {cli_path}")
-          print(f"args : {args}")
 
+          print(cli_path,"shapeaxi",args)
           # running in // to not block Slicer
           process = threading.Thread(target=self.conda_wsl.condaRunFilePython, args=(cli_path,"shapeaxi",args))
+
           process.start()
           self.ui.applyChangesButton.setEnabled(False)
           self.ui.doneLabel.setHidden(True)

@@ -851,7 +851,6 @@ class CrownSegmentationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin)
 
               # running in // to not block Slicer
               process = threading.Thread(target=self.conda_wsl.condaRunFilePython, args=(cli_path,"shapeaxi",args))
-              process.start()
               self.ui.applyChangesButton.setEnabled(False)
               self.ui.doneLabel.setHidden(True)
               self.ui.timeLabel.setHidden(False)
