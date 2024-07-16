@@ -318,7 +318,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
   def onDataType(self):
     self.data_type = self.ui.dataTypeComboBox.currentText
-    print(f'data type: {self.data_type}')
   
   ##
   ## Output
@@ -399,6 +398,37 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
   ##  Process
   ##
 
+
+  
+  def check_pythonpath_windows(self,name_env,file):
+      '''
+      Check if the environment env_name in wsl know the path to a specific file (ex : Crownsegmentationcli.py)
+      return : bool
+      '''
+      conda_exe = self.conda_wsl.getCondaExecutable()
+      command = [conda_exe, "run", "-n", name_env, "python" ,"-c", f"\"import {file} as check;import os; print(os.path.isfile(check.__file__))\""]
+      result = self.conda_wsl.condaRunCommand(command)
+      print("output CHECK python path: ", result)
+      if "True" in result :
+          return True
+      return False
+    
+  def give_pythonpath_windows(self,name_env):
+      '''
+      take the pythonpath of Slicer and give it to the environment name_env in wsl.
+      '''
+      paths = slicer.app.moduleManager().factoryManager().searchPaths
+      mnt_paths = []
+      for path in paths :
+          mnt_paths.append(f"\"{self.windows_to_linux_path(path)}\"")
+      pythonpath_arg = 'PYTHONPATH=' + ':'.join(mnt_paths)
+      conda_exe = self.conda_wsl.getCondaExecutable()
+      # print("Conda_exe : ",conda_exe)
+      argument = [conda_exe, 'env', 'config', 'vars', 'set', '-n', name_env, pythonpath_arg]
+      results = self.conda_wsl.condaRunCommand(argument)
+      print("output GIVE python path: ", results)
+
+
   def onApplyChangesButton(self):
     '''
     This function is called when the user want to run dentalmodelseg
@@ -414,10 +444,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.ui.applyChangesButton.setEnabled(False)
 
     msg = qt.QMessageBox()
-    print(self.input_dir)
     if not(os.path.isdir(self.output)):
-      print('Error.')
-      print(self.output)
       if not(os.path.isdir(self.output)):
         msg.setText("Output directory : \nIncorrect path.")
         print('Error: Incorrect path for output directory.')
@@ -465,7 +492,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             self.ui.applyChangesButton.setEnabled(True)
 
         else:
-          self.logic = ShapeClassificationLogic(input_dir=self.input_dir, output_dir=self.output, data_type=self.data_type)                
+          self.logic = ShapeClassificationLogic(input_dir=self.input_dir, output_dir=self.output, data_type=self.data_type, task='severity')                
           self.logic.process()
           self.addObserver(self.logic.cliNode,vtk.vtkCommand.ModifiedEvent,self.onProcessUpdate)
           self.onProcessStarted()
@@ -477,6 +504,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
       ### TODO: Windows test and changes
       else:
         from CondaSetUp import  CondaSetUpCall,CondaSetUpCallWsl
+        print("windows!!")
 
         self.conda_wsl = CondaSetUpCallWsl()  
         wsl = self.conda_wsl.testWslAvailable()
@@ -486,6 +514,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         slicer.app.processEvents()
 
         if wsl : # if wsl is install
+          print("WSL installed")
           lib = self.check_lib_wsl()
           if not lib : # if lib required are not install
             self.ui.timeLabel.setText(f"Checking if the required librairies are installed, this task may take a moments")
@@ -498,15 +527,13 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
           text = "Code can't be launch. \nWSL is not installed, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading may be blocked by Chrome, this is normal, just authorize it."
           ready = False
           messageBox.information(None, "Information", text)
-          
         if ready : # checking if miniconda installed on wsl
           self.ui.timeLabel.setText(f"Checking if miniconda is installed")
           if "Error" in self.conda_wsl.condaRunCommand([self.conda_wsl.getCondaExecutable(),"--version"]): # if conda is setup
               messageBox = qt.QMessageBox()
               text = "Code can't be launch. \nConda is not setup in WSL. Please go the extension CondaSetUp in SlicerConda to do it."
               ready = False
-              messageBox.information(None, "Information", text)
-        
+              messageBox.information(None, "Information", text)       
         if ready : # checking if environment 'shapeaxi' exist on wsl and if no ask user permission to create and install required lib in it
           self.ui.timeLabel.setText(f"Checking if environnement exist")
           if not self.conda_wsl.condaTestEnv('shapeaxi') : # check is environnement exist, if not ask user the permission to do it
@@ -569,63 +596,77 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
               ready=True
             else :
               ready = False
-
+          else:
+            print("shapeaxi already exists!")
         if ready : # if everything is ready launch dentalmodelseg on the environnement shapeaxi in wsl
-          # model = self.model
-          # if self.model == "latest":
-          #   model = None
-          # else :
-          #   model = self.windows_to_linux_path(model)
-
           name_env = "shapeaxi"
 
           result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
           if not result_pythonpath : 
             self.give_pythonpath_windows(name_env)
             result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
-            
-          # if result_pythonpath :
-            # Creation path in wsl to dentalmodelseg
-            # output_command = self.conda_wsl.condaRunCommand(["which","dentalmodelseg"],"shapeaxi").strip()
-            # clean_output = re.search(r"Result: (.+)", output_command)
-            # dentalmodelseg_path = clean_output.group(1).strip()
-            # dentalmodelseg_path_clean = dentalmodelseg_path.replace("\\n","")
-                
-
-          # Creation of path to ShapeClassificationcli.py
-          # file_path = os.path.realpath(__file__)
-          # folder = os.path.dirname(file_path)
-          # cli_folder = os.path.join(folder, '../ShapeClassificationcli')
-          # clis_folder_norm = os.path.normpath(cli_folder)
-          # cli_path = os.path.join(clis_folder_norm, 'ShapeClassificationcli.py')
           
-          args = [self.input_dir, self.output, self.data_type]
+          if 'Airway' in self.data_type.split(' '):
+            for model_type in ['binary', 'severity', 'regression']:
+              args = [self.input_dir, self.output, self.data_type, model_type]
 
-          conda_exe = self.conda_wsl.getCondaExecutable()
-          command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
-          for arg in args :
-                command.append("\""+arg+"\"")
-          print("command : ",command)
-    
-          # running in // to not block Slicer
-          process = threading.Thread(target=self.conda_wsl.condaRunCommand, args=(command,))
+              conda_exe = self.conda_wsl.getCondaExecutable()
+              command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
+              for arg in args :
+                    command.append("\""+arg+"\"")
+              print("The following command will be executed:\n",command)
 
-          process.start()
-          self.ui.applyChangesButton.setEnabled(False)
-          self.ui.doneLabel.setHidden(True)
-          self.ui.timeLabel.setHidden(False)
-          self.ui.progressLabel.setHidden(False)
-          self.ui.timeLabel.setText(f"time : 0.00s")
-          start_time = time.time()
-          previous_time = start_time
-          while process.is_alive():
-            slicer.app.processEvents()
-            current_time = time.time()
-            gap=current_time-previous_time
-            if gap>0.3:
-              previous_time = current_time
-              elapsed_time = current_time - start_time
-              self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
+              results = self.conda_wsl.condaRunCommand(command)
+              print("results CLI command :\n", results)
+
+              # running in // to not block Slicer
+              process = threading.Thread(target=self.conda_wsl.condaRunCommand, args=(command,))
+
+              process.start()
+              self.ui.applyChangesButton.setEnabled(False)
+              self.ui.doneLabel.setHidden(True)
+              self.ui.timeLabel.setHidden(False)
+              self.ui.progressLabel.setHidden(False)
+              self.ui.timeLabel.setText(f"time : 0.00s")
+              start_time = time.time()
+              previous_time = start_time
+              while process.is_alive():
+                slicer.app.processEvents()
+                current_time = time.time()
+                gap=current_time-previous_time
+                if gap>0.3:
+                  previous_time = current_time
+                  elapsed_time = current_time - start_time
+                  self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
+          else:
+              args = [self.input_dir, self.output, self.data_type, 'severity']
+              conda_exe = self.conda_wsl.getCondaExecutable()
+              command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
+              for arg in args :
+                    command.append("\""+arg+"\"")
+              print("The following command will be executed:\n",command)
+
+              results = self.conda_wsl.condaRunCommand(command)
+              print("results CLI command :\n", results)
+
+              # running in // to not block Slicer
+              process = threading.Thread(target=self.conda_wsl.condaRunCommand, args=(command,))
+              process.start()
+              self.ui.applyChangesButton.setEnabled(False)
+              self.ui.doneLabel.setHidden(True)
+              self.ui.timeLabel.setHidden(False)
+              self.ui.progressLabel.setHidden(False)
+              self.ui.timeLabel.setText(f"time : 0.00s")
+              start_time = time.time()
+              previous_time = start_time
+              while process.is_alive():
+                slicer.app.processEvents()
+                current_time = time.time()
+                gap=current_time-previous_time
+                if gap>0.3:
+                  previous_time = current_time
+                  elapsed_time = current_time - start_time
+                  self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
 
           self.ui.progressLabel.setHidden(True)
           self.ui.doneLabel.setHidden(False)
