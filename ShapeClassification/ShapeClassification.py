@@ -478,15 +478,13 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
       else:
         from CondaSetUp import  CondaSetUpCall,CondaSetUpCallWsl
 
-        # The code is run on wsl into an environment 'shapeaxi'
-        print("Windows!")
-
         self.conda_wsl = CondaSetUpCallWsl()  
         wsl = self.conda_wsl.testWslAvailable()
         ready = True
         self.ui.timeLabel.setHidden(False)
         self.ui.timeLabel.setText(f"Checking if wsl is installed, this task may take a moments")
         slicer.app.processEvents()
+
         if wsl : # if wsl is install
           lib = self.check_lib_wsl()
           if not lib : # if lib required are not install
@@ -533,15 +531,31 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
               start_time = time.time()
               previous_time = start_time
               self.ui.timeLabel.setText(f"Installation of librairies into the new environnement. This task may take a few minutes.\ntime: 0.0s")
+
               name_env = "shapeaxi"
-              file_path = os.path.realpath(__file__)
-              folder = os.path.dirname(file_path)
-              utils_folder = os.path.join(folder, "utils")
-              utils_folder_norm = os.path.normpath(utils_folder)
-              install_path = self.windows_to_linux_path(os.path.join(utils_folder_norm, 'install_pytorch.py'))
-              path_pip = self.conda_wsl.getCondaPath()+"/envs/shapeaxi/bin/pip"
-              process = threading.Thread(target=self.conda_wsl.condaRunFilePython, args=(install_path,name_env,[path_pip],)) # launch install_pythorch.py with the environnement ali_ios to install pytorch3d on it
-              process.start()
+              result_pythonpath = self.check_pythonpath_windows(name_env,"CrownSegmentation_utils.install_pytorch")
+              if not result_pythonpath : 
+                self.give_pythonpath_windows(name_env)
+                # result_pythonpath = self.check_pythonpath_windows(name_env,"ALI_IOS_utils.requirement") # THIS LINE IS WORKING
+                result_pythonpath = self.check_pythonpath_windows(name_env,"CrownSegmentation_utils.install_pytorch")
+                
+              if result_pythonpath : 
+                conda_exe = self.conda_wsl.getCondaExecutable()
+                path_pip = self.conda_wsl.getCondaPath()+f"/envs/{name_env}/bin/pip"
+                # command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ALI_IOS_utils.requirement",path_pip] # THIS LINE IS WORKING
+                command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"CrownSegmentation_utils.install_pytorch",path_pip]
+                print("command : ",command)
+              
+                process = threading.Thread(target=self.conda_wsl.condaRunCommand, args=(command,)) # launch install_pythorch.py with the environnement ali_ios to install pytorch3d on it
+                process.start()
+              # file_path = os.path.realpath(__file__)
+              # folder = os.path.dirname(file_path)
+              # utils_folder = os.path.join(folder, "utils")
+              # utils_folder_norm = os.path.normpath(utils_folder)
+              # install_path = self.windows_to_linux_path(os.path.join(utils_folder_norm, 'install_pytorch.py'))
+              # path_pip = self.conda_wsl.getCondaPath()+"/envs/shapeaxi/bin/pip"
+              # process = threading.Thread(target=self.conda_wsl.condaRunFilePython, args=(install_path,name_env,[path_pip],)) # launch install_pythorch.py with the environnement ali_ios to install pytorch3d on it
+              # process.start()
               
               while process.is_alive():
                 slicer.app.processEvents()
@@ -551,9 +565,11 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                   previous_time = current_time
                   elapsed_time = current_time - start_time
                   self.ui.timeLabel.setText(f"Installation of librairies into the new environnement. This task may take a few minutes.\ntime: {elapsed_time:.1f}s")
+              
+              ready=True
             else :
               ready = False
-          
+
         if ready : # if everything is ready launch dentalmodelseg on the environnement shapeaxi in wsl
           # model = self.model
           # if self.model == "latest":
@@ -563,25 +579,36 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
           name_env = "shapeaxi"
 
-          # Creation of path to ShapeClassificationcli.py
-          file_path = os.path.realpath(__file__)
-          folder = os.path.dirname(file_path)
-          cli_folder = os.path.join(folder, '../ShapeClassificationcli')
-          clis_folder_norm = os.path.normpath(cli_folder)
-          cli_path = os.path.join(clis_folder_norm, 'ShapeClassificationcli.py')
-          
-          # Creation path in wsl to dentalmodelseg ???
-          # output_command = self.conda_wsl.condaRunCommand(["which","dentalmodelseg"],"shapeaxi").strip()
-          # clean_output = re.search(r"Result: (.+)", output_command)
-          # dentalmodelseg_path = clean_output.group(1).strip()
-          # dentalmodelseg_path_clean = dentalmodelseg_path.replace("\\n","")
-          
+          result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
+          if not result_pythonpath : 
+            self.give_pythonpath_windows(name_env)
+            result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
+            
+          # if result_pythonpath :
+            # Creation path in wsl to dentalmodelseg
+            # output_command = self.conda_wsl.condaRunCommand(["which","dentalmodelseg"],"shapeaxi").strip()
+            # clean_output = re.search(r"Result: (.+)", output_command)
+            # dentalmodelseg_path = clean_output.group(1).strip()
+            # dentalmodelseg_path_clean = dentalmodelseg_path.replace("\\n","")
+                
 
+          # Creation of path to ShapeClassificationcli.py
+          # file_path = os.path.realpath(__file__)
+          # folder = os.path.dirname(file_path)
+          # cli_folder = os.path.join(folder, '../ShapeClassificationcli')
+          # clis_folder_norm = os.path.normpath(cli_folder)
+          # cli_path = os.path.join(clis_folder_norm, 'ShapeClassificationcli.py')
+          
           args = [self.input_dir, self.output, self.data_type]
 
-          print(cli_path,"shapeaxi",args)
+          conda_exe = self.conda_wsl.getCondaExecutable()
+          command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
+          for arg in args :
+                command.append("\""+arg+"\"")
+          print("command : ",command)
+    
           # running in // to not block Slicer
-          process = threading.Thread(target=self.conda_wsl.condaRunFilePython, args=(cli_path,"shapeaxi",args))
+          process = threading.Thread(target=self.conda_wsl.condaRunCommand, args=(command,))
 
           process.start()
           self.ui.applyChangesButton.setEnabled(False)
