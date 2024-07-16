@@ -23,7 +23,6 @@ add_subdirectory(CrownSegmentation)
 add_subdirectory(CrownSegmentationcli)
 add_subdirectory(ShapeClassification)
 add_subdirectory(ShapeClassificationcli)
-add_subdirectory(classificationcli)
 ## NEXT_MODULE
 
 #-----------------------------------------------------------------------------
