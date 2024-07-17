@@ -614,9 +614,12 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
               command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
               for arg in args :
                     command.append("\""+arg+"\"")
-              print("The following command will be executed:\n",command)
+              # print("The following command will be executed:\n",command)
 
               results = self.conda_wsl.condaRunCommand(command)
+              print()
+              print()
+              print('----------------------------------------')
               print("results CLI command :\n", results)
 
               # running in // to not block Slicer
