@@ -1,27 +1,21 @@
 {
-    "2class_airways": {
+    "airways_2_class": {
         "version": "1.0",
-        "url": ""
+        "url": "https://github.com/lucieDLE/SlicerDentalModelSeg/releases/download/v1/airways_2_class.ckpt"
     },
 
-    "4class_airways": {
+    "airways_4_class": {
         "version": "1.0",
-        "url": ""
+        "url": "https://github.com/lucieDLE/SlicerDentalModelSeg/releases/download/v1/airways_4_class.ckpt"
     },
     
-    "4reg_airways": {
+    "airways_4_regress": {
         "version": "1.0",
-        "url": ""
+        "url": "https://github.com/lucieDLE/SlicerDentalModelSeg/releases/download/v1/airways_4_regress.ckpt"
     },
     
     
     "4class_cleft": {
-        "version": "1.0",
-        "url": ""
-    },
-    
-
-    "2class_condyles": {
         "version": "1.0",
         "url": ""
     },
