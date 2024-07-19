@@ -142,6 +142,13 @@
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="cancelButton">
+     <property name="text">
+      <string>Cancel</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QProgressBar" name="progressBar">
      <property name="enabled">
       <bool>false</bool>
@@ -187,16 +194,6 @@
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="cancelButton">
-     <property name="enabled">
-      <bool>true</bool>
-     </property>
-     <property name="text">
-      <string>Cancel</string>
      </property>
     </widget>
    </item>
