@@ -121,9 +121,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
     self.input = ""
     self.outputFolder = ""
-    # self.model = "" 
     self.mount_point = ""
-    # self.nn = ""
     self.data_type = ""
 
     self.log_path = os.path.join(slicer.util.tempDirectory(), 'process.log')
@@ -160,57 +158,31 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
 
     # UI elements 
-    # self.ui.dependenciesButton.connect('clicked(bool)',self.checkDependencies)
 
-    # self.ui.browseFileButton.connect('clicked(bool)',self.onBrowseFileButton)
-    # self.ui.browseModelButton.connect('clicked(bool)',self.onBrowseModelButton)
     self.ui.browseDirectoryButton.connect('clicked(bool)',self.onBrowseOutputButton)
     self.ui.browseMountPointButton.connect('clicked(bool)',self.onBrowseMountPointButton)
     self.ui.cancelButton.connect('clicked(bool)', self.onCancel)
 
-    # self.ui.nnTypeComboBox.currentTextChanged.connect(self.onNN)
     self.ui.dataTypeComboBox.currentTextChanged.connect(self.onDataType)
-    # self.ui.checkBoxLatestModel.stateChanged.connect(self.useLatestModel)
-    # self.ui.explainabilityCheckBox.stateChanged.connect(self.useExplainability)
-
-
-    # self.ui.githubButton.connect('clicked(bool)',self.onGithubButton)
     self.ui.resetButton.connect('clicked(bool)',self.onReset)
 
-    # self.ui.inputFileLineEdit.textChanged.connect(self.onEditInputLine)
-    # self.ui.modelLineEdit.textChanged.connect(self.onEditModelLine)
     self.ui.outputLineEdit.textChanged.connect(self.onEditOutputLine)
     self.ui.mountPointLineEdit.textChanged.connect(self.onEditMountPointLine)
-    # self.ui.surfColumnLineEdit.textChanged.connect(self.onEditSurfColumnLine)
-    # self.ui.surfColumnLineEdit.setText('surf')
-
 
     # initialize variables
-    # self.model = self.ui.modelLineEdit.text
-    # self.input = self.ui.inputFileLineEdit.text
     self.output = self.ui.outputLineEdit.text
     self.input_dir = self.ui.mountPointLineEdit.text
-    # self.surf_column = self.ui.surfColumnLineEdit.text
     self.data_type = self.ui.dataTypeComboBox.currentText
-    # self.nn_type = self.ui.nnTypeComboBox.currentText
-    self.bool_add_axi = False
 
 
     # hidden buttons (installations & Github)
     self.ui.cancelButton.setHidden(True)
     self.ui.doneLabel.setHidden(True)
-    # self.ui.githubButton.setHidden(True)
     self.ui.timeLabel.setHidden(True)
     self.ui.progressBar.setHidden(True)
     self.ui.progressLabel.setHidden(True)
-    # self.ui.
     
-    # self.ui.dependenciesButton.setEnabled(False)
-    # self.ui.installProgressBar.setEnabled(False)
-    # self.ui.installSuccessLabel.setHidden(True)
 
-
-    # self.ui.applyButton.connect("clicked(bool)", self.onApplyButton)
     self.ui.applyChangesButton.connect('clicked(bool)',self.onApplyChangesButton)
 
     # Make sure parameter node is initialized (needed for module reload)
@@ -294,12 +266,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
   ## 
   ## Inputs
   ##
-        
-  # def onBrowseFileButton(self):
-  #   newsurfaceFile = qt.QFileDialog.getOpenFileName(self.parent, "Select a .csv file containing files for prediction",'', "csv files (*.csv)")
-  #   if newsurfaceFile != '':
-  #     self.input = newsurfaceFile
-  #     self.ui.inputFileLineEdit.setText(self.input)
 
   def onBrowseMountPointButton(self):
     mount_point = qt.QFileDialog.getExistingDirectory(self.parent, "Select a folder containing vtk files")
@@ -309,12 +275,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
   def onEditMountPointLine(self):
     self.input_dir = self.ui.mountPointLineEdit.text
-
-  # def onEditSurfColumnLine(self):
-  #   self.surf_column = self.ui.surfColumnLineEdit.text
-
-  # def onEditInputLine(self):
-  #   self.input = self.ui.inputFileLineEdit.text
 
   def onDataType(self):
     self.data_type = self.ui.dataTypeComboBox.currentText
@@ -333,66 +293,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
   def onEditOutputLine(self):
     self.output = self.ui.outputLineEdit.text
-
-
-
-  ## 
-  ## Dependencies 
-  ##
-  def checkDependencies(self): #TODO: ALSO CHECK FOR CUDA 
-    # self.ui.dependenciesButton.setEnabled(False)
-    self.ui.applyChangesButton.setEnabled(False)
-    self.ui.installProgressBar.setEnabled(True)
-    self.installLogic = ShapeClassificationLogic('-1',0,0,0,0,0) # -1: flag so that CLI module knows it's only to install dependencies
-    self.installLogic.process()
-    self.ui.installProgressBar.setRange(0,0)
-    self.installObserver = self.installLogic.cliNode.AddObserver('ModifiedEvent',self.onInstallationProgress)
-  
-  def onInstallationProgress(self,caller,event):
-    if self.installLogic.cliNode.GetStatus() & self.installLogic.cliNode.Completed:
-      if self.installLogic.cliNode.GetStatus() & self.installLogic.cliNode.ErrorsMask:
-        # error
-        errorText = self.installLogic.cliNode.GetErrorText()
-        print("CLI execution failed: \n \n" + errorText)
-        msg = qt.QMessageBox()
-        msg.setText(f'There was an error during the installation:\n \n {errorText} ')
-        msg.setWindowTitle("Error")
-        msg.exec_()
-      else:
-        # success
-        print('SUCCESS')
-        print(self.installLogic.cliNode.GetOutputText())
-        # self.ui.installSuccessLabel.setHidden(False)
-      # self.ui.installProgressBar.setRange(0,100)
-      # self.ui.installProgressBar.setEnabled(False)
-      # self.ui.dependenciesButton.setEnabled(False)
-      self.ui.applyChangesButton.setEnabled(True)
-
-
-  # ## change to new function
-  # def onGithubButton(self):
-  #   print("no release found")
-  #   ## TODO:links/checkpoints to models for Clefts/Airways/Condyles
-  #   ## put model path / and change the network type cell to the architecture used
-
-  #   if self.data_type == 'Clefts':
-  #     print("searching cleft model")
-  #     # webbrowser.open('https://github.com/DCBIA-OrthoLab/Fly-by-CNN/releases/tag/3.0')
-  #   elif self.data_type == 'Condyles':
-  #     print("searching condyles model")
-  #     # self.modelType = SaxiRing
-  #     # webbrowser.open('https://github.com/DCBIA-OrthoLab/Fly-by-CNN/releases/tag/3.0')
-
-  #   elif self.data_type == 'Airways':
-  #     print("searching airways model")
-  #     # self.modelType = SaxiMHAFB
-  #     # webbrowser.open('https://github.com/DCBIA-OrthoLab/Fly-by-CNN/releases/tag/3.0')
-
-  #   else:
-  #     print("Throw error --> no matching model for data type entered")
-
-
-
 
   ##
   ##  Process
@@ -514,7 +414,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         slicer.app.processEvents()
 
         if wsl : # if wsl is install
-          print("WSL installed")
+          self.ui.timeLabel.setText("WSL installed")
           lib = self.check_lib_wsl()
           if not lib : # if lib required are not install
             self.ui.timeLabel.setText(f"Checking if the required librairies are installed, this task may take a moments")
@@ -534,6 +434,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
               text = "Code can't be launch. \nConda is not setup in WSL. Please go the extension CondaSetUp in SlicerConda to do it."
               ready = False
               messageBox.information(None, "Information", text)       
+
         if ready : # checking if environment 'shapeaxi' exist on wsl and if no ask user permission to create and install required lib in it
           self.ui.timeLabel.setText(f"Checking if environnement exist")
           if not self.conda_wsl.condaTestEnv('shapeaxi') : # check is environnement exist, if not ask user the permission to do it
@@ -616,11 +517,10 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                     command.append("\""+arg+"\"")
               # print("The following command will be executed:\n",command)
 
-              results = self.conda_wsl.condaRunCommand(command)
               print()
               print()
               print('----------------------------------------')
-              print("results CLI command :\n", results)
+              print("results CLI command :\n")
 
               # running in // to not block Slicer
               process = threading.Thread(target=self.conda_wsl.condaRunCommand, args=(command,))
@@ -630,6 +530,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
               self.ui.doneLabel.setHidden(True)
               self.ui.timeLabel.setHidden(False)
               self.ui.progressLabel.setHidden(False)
+              self.ui.progressBar.setHidden(False)
               self.ui.timeLabel.setText(f"time : 0.00s")
               start_time = time.time()
               previous_time = start_time
@@ -649,8 +550,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                     command.append("\""+arg+"\"")
               print("The following command will be executed:\n",command)
 
-              results = self.conda_wsl.condaRunCommand(command)
-              print("results CLI command :\n", results)
 
               # running in // to not block Slicer
               process = threading.Thread(target=self.conda_wsl.condaRunCommand, args=(command,))
@@ -708,6 +607,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.ui.doneLabel.setHidden(True)
     self.ui.timeLabel.setHidden(False)
     self.ui.progressLabel.setHidden(False)
+    self.ui.progressBar.setHidden(False)
     self.ui.timeLabel.setText(f"time : 0.00s") 
 
 
@@ -749,7 +649,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         self.ui.applyChangesButton.setEnabled(True)
         print("Process completed successfully.")
         # self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
-
         
         print("*"*25,"Output cli","*"*25)
         print(self.logic.cliNode.GetOutputText())
@@ -763,7 +662,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
   def onReset(self):
     self.ui.outputLineEdit.setText("")
     self.ui.mountPointLineEdit.setText("")
-
 
     self.ui.applyChangesButton.setEnabled(True)
     self.ui.progressLabel.setHidden(True)
