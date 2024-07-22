@@ -41,6 +41,11 @@
       <index>3</index>
       <description>task: severity, binary, or regression</description>
     </string>
-
+    <string>
+      <name>log_path</name>
+      <label>log_path</label>
+      <index>4</index>
+      <description>log_path: process.log</description>
+    </string>
   </parameters>
 </executable>
