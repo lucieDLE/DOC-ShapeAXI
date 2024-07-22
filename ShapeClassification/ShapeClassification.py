@@ -124,7 +124,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.mount_point = ""
     self.data_type = ""
 
-    self.log_path = os.path.join(slicer.util.tempDirectory(), 'process.log')
+    self.log_path = os.path.normpath(os.path.join(slicer.util.tempDirectory(), 'process.log'))
     self.time_log = 0 # for progress bar
     self.progress = 0
     self.currentPredDict = {}
@@ -174,14 +174,23 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.input_dir = self.ui.mountPointLineEdit.text
     self.data_type = self.ui.dataTypeComboBox.currentText
 
-
-    # hidden buttons (installations & Github)
     self.ui.cancelButton.setHidden(True)
     self.ui.doneLabel.setHidden(True)
-    self.ui.timeLabel.setHidden(True)
-    self.ui.progressBar.setHidden(True)
-    self.ui.progressLabel.setHidden(True)
+
     
+    # progress bar 
+    self.log_path = os.path.normpath(os.path.join(slicer.util.tempDirectory(), 'process.log'))
+    self.time_log = 0
+    self.cliNode = None
+    self.installCliNode = None
+    self.progress = 0
+
+    self.ui.timeLabel.setVisible(False)
+    self.ui.progressLabel.setVisible(False)
+    
+    self.ui.progressBar.setVisible(False)
+    self.ui.progressBar.setRange(0,100)
+    self.ui.progressBar.setTextVisible(True)
 
     self.ui.applyChangesButton.connect('clicked(bool)',self.onApplyChangesButton)
 
@@ -392,7 +401,11 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             self.ui.applyChangesButton.setEnabled(True)
 
         else:
-          self.logic = ShapeClassificationLogic(input_dir=self.input_dir, output_dir=self.output, data_type=self.data_type, task='severity')                
+          self.logic = ShapeClassificationLogic(input_dir=self.input_dir, 
+                                                output_dir=self.output, 
+                                                data_type=self.data_type, 
+                                                task='severity',
+                                                log_path=self.log_path)                
           self.logic.process()
           self.addObserver(self.logic.cliNode,vtk.vtkCommand.ModifiedEvent,self.onProcessUpdate)
           self.onProcessStarted()
@@ -508,14 +521,14 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
           
           if 'Airway' in self.data_type.split(' '):
-            for model_type in ['binary', 'severity', 'regression']:
-              args = [self.input_dir, self.output, self.data_type, model_type]
+            for task in ['binary', 'severity', 'regression']:
+              args = [self.input_dir, self.output, self.data_type, task, self.log_path]
 
               conda_exe = self.conda_wsl.getCondaExecutable()
               command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
               for arg in args :
                     command.append("\""+arg+"\"")
-              # print("The following command will be executed:\n",command)
+              print("The following command will be executed:\n",command)
 
               print()
               print()
@@ -598,8 +611,11 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         self.ui.timeLabel.setText(f"{message}\ntime: {elapsed_time:.1f}s")
 
 
-
   def onProcessStarted(self):
+    self.nbSubjects = len([x for x in os.listdir(self.input_dir) if os.path.isdir(os.path.join(self.input_dir,x))])
+    self.ui.progressBar.setValue(0)
+    self.progress = 0
+
     self.start_time = time.time()
     self.previous_time = self.start_time  
     
@@ -613,51 +629,73 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
   def onProcessUpdate(self,caller,event):
     # check log file
-    current_time = time.time()
-    gap = current_time - self.previous_time
-    if gap > 0.3:
-      self.previous_time = current_time
-      elapsed_time = current_time - self.start_time
-      self.ui.timeLabel.setText(f"prediction in process\ntime : {elapsed_time:.2f}s")
-    
+    if os.path.isfile(self.log_path):
+      print(self.log_path)
+      time_progress = os.path.getmtime(self.log_path)
+      if time_progress != self.time_log and self.progress < self.nbSubjects:
+        # if progress was made
+        self.time_log = time_progress
+        self.progress += 1
+        progressbar_value = round((self.progress-1) /self.nbSubjects * 100,2)
 
-    if self.logic.cliNode.GetStatus() & self.logic.cliNode.Completed:
-    # process complete
-      self.ui.applyChangesButton.setEnabled(True)
-      self.ui.resetButton.setEnabled(True)
-      self.ui.progressLabel.setHidden(False)     
-      self.ui.cancelButton.setEnabled(False)
-      self.ui.progressBar.setEnabled(False)
-      self.ui.progressBar.setHidden(True)
-      self.ui.progressLabel.setHidden(True)
+        if progressbar_value < 100 :
+            self.ui.progressBar.setValue(progressbar_value)
+            self.ui.progressBar.setFormat(str(progressbar_value)+"%")
+        else:
+            self.ui.progressBar.setValue(99)
+            self.ui.progressBar.setFormat("99%")
+        self.ui.labelBar.setText("Number of processed subjects : "+str(self.progress-1)+"/"+str(self.nbSubjects))
 
-      if self.logic.cliNode.GetStatus() & self.logic.cliNode.ErrorsMask:
-        # error
-        errorText = self.logic.cliNode.GetErrorText()
-        print("CLI execution failed: \n \n" + errorText)
-        msg = qt.QMessageBox()
-        msg.setText(f'There was an error during the process:\n \n {errorText} ')
-        msg.setWindowTitle("Error")
-        msg.exec_()
+      # current_time = time.time()
+      # gap = current_time - self.previous_time
+      # if gap > 0.3:
+      #   self.previous_time = current_time
+      #   elapsed_time = current_time - self.start_time
+      #   self.ui.timeLabel.setText(f"prediction in process\ntime : {elapsed_time:.2f}s")
+      
 
-      else:
-        # success
-        print('PROCESS DONE.')
-
-        self.ui.progressLabel.setHidden(True)
-        self.ui.doneLabel.setHidden(False)
+      if self.logic.cliNode.GetStatus() & self.logic.cliNode.Completed:
+      # process complete
         self.ui.applyChangesButton.setEnabled(True)
-        print("Process completed successfully.")
-        # self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
-        
-        print("*"*25,"Output cli","*"*25)
-        print(self.logic.cliNode.GetOutputText())
-        
-        file_path = os.path.abspath(__file__)
-        folder_path = os.path.dirname(file_path)
-        csv_file = os.path.join(folder_path,"list_file.csv")
-        if os.path.exists(csv_file):
-          os.remove(csv_file)
+        self.ui.resetButton.setEnabled(True)
+        self.ui.progressLabel.setHidden(False)     
+        self.ui.cancelButton.setEnabled(False)
+        self.ui.progressBar.setEnabled(False)
+        self.ui.progressBar.setHidden(True)
+        self.ui.progressLabel.setHidden(True)
+
+        if self.logic.cliNode.GetStatus() & self.logic.cliNode.ErrorsMask:
+          # error
+          errorText = self.logic.cliNode.GetErrorText()
+          print("CLI execution failed: \n \n" + errorText)
+          msg = qt.QMessageBox()
+          msg.setText(f'There was an error during the process:\n \n {errorText} ')
+          msg.setWindowTitle("Error")
+          msg.exec_()
+
+        else:
+          # success
+          print('PROCESS DONE.')
+          print(self.logic.cliNode.GetOutputText())
+          self.ui.progressBar.setValue(100)
+          self.ui.progressBar.setFormat("100%")
+
+          self.ui.progressLabel.setHidden(True)
+          self.ui.doneLabel.setHidden(False)
+          self.ui.applyChangesButton.setEnabled(True)
+          print("Process completed successfully.")
+          
+          elapsed_time = round(time.time() - self.startTime,3)
+          self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
+          
+          print("*"*25,"Output cli","*"*25)
+          print(self.logic.cliNode.GetOutputText())
+          
+      #     file_path = os.path.abspath(__file__)
+      #     folder_path = os.path.dirname(file_path)
+      #     csv_file = os.path.join(folder_path,"list_file.csv")
+      #     if os.path.exists(csv_file):
+      #       os.remove(csv_file)
       
   def onReset(self):
     self.ui.outputLineEdit.setText("")
@@ -748,7 +786,7 @@ class ShapeClassificationLogic(ScriptedLoadableModuleLogic):
 
   """
 
-  def __init__(self, input_dir = "None", output_dir="None", data_type="None", task='severity'):
+  def __init__(self, input_dir = "None", output_dir="None", data_type="None", task='severity', log_path='./'):
     
     """Called when the logic class is instantiated. Can be used for initializing member variables."""
     ScriptedLoadableModuleLogic.__init__(self)
@@ -757,6 +795,8 @@ class ShapeClassificationLogic(ScriptedLoadableModuleLogic):
     self.input_dir = input_dir
     self.data_type = data_type
     self.task = task
+    self.log_path = log_path
+    print("CLI before: ", log_path)
 
   def process(self):
     """
@@ -770,6 +810,7 @@ class ShapeClassificationLogic(ScriptedLoadableModuleLogic):
     parameters ["output_dir"] = self.output_dir
     parameters ['data_type'] = self.data_type
     parameters ['task'] = self.task
+    parameters['log_path'] = self.log_path
 
     shapeaxi_process = slicer.modules.shapeclassificationcli
     self.cliNode = slicer.cli.run(shapeaxi_process,None, parameters)  
