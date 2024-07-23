@@ -244,8 +244,9 @@ def saxi_gradcam(args, model_cam_mv, class_idx,df):
       # print("Output : ",result.stdout)
       # print("Error : ",result.stderr)
       
-        with open(args.log_path,'r+') as log_f :
-          log_f.write(f"gradcam,{idx},{class_idx}")
+        with open(args.log_path,'w+') as log_f :
+          # log_f.write(f"explainability,{idx},{class_idx},{model.hparams.num_classes}")
+          log_f.write(f"explainability,{idx+1},{class_idx},2")
 
 
 
@@ -294,8 +295,8 @@ def saxi_predict(args,out_model_path): ## I think it works -> need to test on re
         #   x = torch.argmax(x, dim=1, keepdim=True)
         # predictions.append(x)
 
-        with open(args.log_path,'r+') as log_f :
-          log_f.write(f"predict,{idx}")
+        with open(args.log_path,'w+') as log_f :
+          log_f.write(f"predict,{idx+1},NaN,{model.hparams.num_classes}")
 
 
       # predictions = torch.cat(predictions).cpu().numpy().squeeze()
@@ -320,9 +321,6 @@ def create_csv(input_file):
    
 ## OK - 
 def main(args):
-  with open(args.log_path,'w') as log_f:
-    # clear log file
-    log_f.truncate(0)
 
   model_name, args.nn = find_best_model(args.data_type)
 
@@ -331,6 +329,10 @@ def main(args):
   args.input_dir = linux2windows_path(args.input_dir)
   args.output_dir = linux2windows_path(args.output_dir)
   args.log_path = linux2windows_path(args.log_path)
+
+  with open(args.log_path,'w') as log_f:
+    # clear log file
+    log_f.truncate(0)
   
 
   out_model_path = os.path.join(args.output_dir, model_name + '.ckpt')
