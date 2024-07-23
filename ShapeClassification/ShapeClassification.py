@@ -179,7 +179,13 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
     
     # progress bar 
-    self.log_path = os.path.normpath(os.path.join(slicer.util.tempDirectory(), 'process.log'))
+    self.log_path = os.path.normpath(os.path.join(os.path.dirname(__file__), 'process.log'))
+    
+    if '\\' in self.log_path:
+      self.log_path = self.log_path.replace('\\', '/')
+    
+    with open(self.log_path, mode='w') as f: pass
+
     self.time_log = 0
     self.cliNode = None
     self.installCliNode = None
@@ -539,6 +545,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
               process = threading.Thread(target=self.conda_wsl.condaRunCommand, args=(command,))
 
               process.start()
+              self.onProcessStarted()
               self.ui.applyChangesButton.setEnabled(False)
               self.ui.doneLabel.setHidden(True)
               self.ui.timeLabel.setHidden(False)
@@ -549,6 +556,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
               previous_time = start_time
               while process.is_alive():
                 slicer.app.processEvents()
+                self.onProcessUpdate()
                 current_time = time.time()
                 gap=current_time-previous_time
                 if gap>0.3:
@@ -612,10 +620,13 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
 
   def onProcessStarted(self):
-    self.nbSubjects = len([x for x in os.listdir(self.input_dir) if os.path.isdir(os.path.join(self.input_dir,x))])
+    self.nbSubjects = 0
+    self.nbSubjects += sum(1 for elt in os.listdir(self.input_dir) if os.path.splitext(elt)[1] == '.vtk')
+
     self.ui.progressBar.setValue(0)
     self.progress = 0
-
+    self.previous_task='predict'
+      
     self.start_time = time.time()
     self.previous_time = self.start_time  
     
@@ -630,21 +641,43 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
   def onProcessUpdate(self,caller,event):
     # check log file
     if os.path.isfile(self.log_path):
-      print(self.log_path)
       time_progress = os.path.getmtime(self.log_path)
-      if time_progress != self.time_log and self.progress < self.nbSubjects:
-        # if progress was made
-        self.time_log = time_progress
-        self.progress += 1
-        progressbar_value = round((self.progress-1) /self.nbSubjects * 100,2)
 
-        if progressbar_value < 100 :
-            self.ui.progressBar.setValue(progressbar_value)
-            self.ui.progressBar.setFormat(str(progressbar_value)+"%")
-        else:
-            self.ui.progressBar.setValue(99)
-            self.ui.progressBar.setFormat("99%")
-        self.ui.labelBar.setText("Number of processed subjects : "+str(self.progress-1)+"/"+str(self.nbSubjects))
+        # if progress was made
+      if time_progress != self.time_log :
+        with open(self.log_path, 'r') as f:
+          line = f.readline()
+          if line != '':
+            current_task, progress, class_idx, num_classes = line.strip().split(',')
+            self.progress = int(progress)
+
+            if self.previous_task != current_task: 
+              print("reset progress bar and self.progresss")
+              self.progress = 0
+              self.ui.progressBar.setValue(0)
+              self.previous_task = current_task
+
+            if current_task == 'explainability':
+              self.ui.progressLabel.setText('Explainability in progres...')
+              self.ui.labelBar.setText(f"Class {class_idx} - Number of processed subjects : {self.progress}/{self.nbSubjects}")
+              total_progress = self.progress + int(class_idx) * self.nbSubjects
+              overall_progress = total_progress / (self.nbSubjects * int(num_classes)) * 100
+              progressbar_value = round(overall_progress, 2)
+
+            else:
+              self.ui.labelBar.setText(f"Number of processed subjects : {self.progress}/{self.nbSubjects}")
+              progressbar_value = round((self.progress) /self.nbSubjects * 100,2)
+
+            self.time_log = time_progress
+
+            if progressbar_value < 100 :
+                self.ui.progressBar.setValue(progressbar_value)
+                self.ui.progressBar.setFormat(str(progressbar_value)+"%")
+            else:
+                self.ui.progressBar.setValue(99)
+                self.ui.progressBar.setFormat("99%")
+          
+        
 
       # current_time = time.time()
       # gap = current_time - self.previous_time
@@ -654,42 +687,42 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
       #   self.ui.timeLabel.setText(f"prediction in process\ntime : {elapsed_time:.2f}s")
       
 
-      if self.logic.cliNode.GetStatus() & self.logic.cliNode.Completed:
-      # process complete
-        self.ui.applyChangesButton.setEnabled(True)
-        self.ui.resetButton.setEnabled(True)
-        self.ui.progressLabel.setHidden(False)     
-        self.ui.cancelButton.setEnabled(False)
-        self.ui.progressBar.setEnabled(False)
-        self.ui.progressBar.setHidden(True)
-        self.ui.progressLabel.setHidden(True)
+      # if self.logic.cliNode.GetStatus() & self.logic.cliNode.Completed:
+      # # process complete
+      #   self.ui.applyChangesButton.setEnabled(True)
+      #   self.ui.resetButton.setEnabled(True)
+      #   self.ui.progressLabel.setHidden(False)     
+      #   self.ui.cancelButton.setEnabled(False)
+      #   self.ui.progressBar.setEnabled(False)
+      #   self.ui.progressBar.setHidden(True)
+      #   self.ui.progressLabel.setHidden(True)
 
-        if self.logic.cliNode.GetStatus() & self.logic.cliNode.ErrorsMask:
-          # error
-          errorText = self.logic.cliNode.GetErrorText()
-          print("CLI execution failed: \n \n" + errorText)
-          msg = qt.QMessageBox()
-          msg.setText(f'There was an error during the process:\n \n {errorText} ')
-          msg.setWindowTitle("Error")
-          msg.exec_()
+      #   if self.logic.cliNode.GetStatus() & self.logic.cliNode.ErrorsMask:
+      #     # error
+      #     errorText = self.logic.cliNode.GetErrorText()
+      #     print("CLI execution failed: \n \n" + errorText)
+      #     msg = qt.QMessageBox()
+      #     msg.setText(f'There was an error during the process:\n \n {errorText} ')
+      #     msg.setWindowTitle("Error")
+      #     msg.exec_()
 
-        else:
-          # success
-          print('PROCESS DONE.')
-          print(self.logic.cliNode.GetOutputText())
-          self.ui.progressBar.setValue(100)
-          self.ui.progressBar.setFormat("100%")
+      #   else:
+      #     # success
+      #     print('PROCESS DONE.')
+      #     print(self.logic.cliNode.GetOutputText())
+      #     self.ui.progressBar.setValue(100)
+      #     self.ui.progressBar.setFormat("100%")
 
-          self.ui.progressLabel.setHidden(True)
-          self.ui.doneLabel.setHidden(False)
-          self.ui.applyChangesButton.setEnabled(True)
-          print("Process completed successfully.")
+      #     self.ui.progressLabel.setHidden(True)
+      #     self.ui.doneLabel.setHidden(False)
+      #     self.ui.applyChangesButton.setEnabled(True)
+      #     print("Process completed successfully.")
           
-          elapsed_time = round(time.time() - self.startTime,3)
-          self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
+      #     elapsed_time = round(time.time() - self.startTime,3)
+      #     self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
           
-          print("*"*25,"Output cli","*"*25)
-          print(self.logic.cliNode.GetOutputText())
+      #     print("*"*25,"Output cli","*"*25)
+      #     print(self.logic.cliNode.GetOutputText())
           
       #     file_path = os.path.abspath(__file__)
       #     folder_path = os.path.dirname(file_path)
