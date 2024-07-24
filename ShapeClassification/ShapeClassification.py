@@ -190,10 +190,13 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.cliNode = None
     self.installCliNode = None
     self.progress = 0
+    self.cancel = False
 
     self.ui.timeLabel.setVisible(False)
+    self.ui.labelBar.setVisible(False)
+    self.ui.labelBar.setStyleSheet(f"""QLabel{{font-size: 12px; qproperty-alignment: AlignCenter;}}""")
     self.ui.progressLabel.setVisible(False)
-    
+    self.ui.progressLabel.setStyleSheet(f"""QLabel{{font-size: 16px; qproperty-alignment: AlignCenter;}}""")
     self.ui.progressBar.setVisible(False)
     self.ui.progressBar.setRange(0,100)
     self.ui.progressBar.setTextVisible(True)
@@ -528,41 +531,40 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
           
           if 'Airway' in self.data_type.split(' '):
             for task in ['binary', 'severity', 'regression']:
-              args = [self.input_dir, self.output, self.data_type, task, self.log_path]
+              if not self.cancel :
+                args = [self.input_dir, self.output, self.data_type, task, self.log_path]
 
-              conda_exe = self.conda_wsl.getCondaExecutable()
-              command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
-              for arg in args :
-                    command.append("\""+arg+"\"")
-              print("The following command will be executed:\n",command)
+                conda_exe = self.conda_wsl.getCondaExecutable()
+                command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
+                for arg in args :
+                      command.append("\""+arg+"\"")
 
-              print()
-              print()
-              print('----------------------------------------')
-              print("results CLI command :\n")
+                # running in // to not block Slicer
+                self.process = threading.Thread(target=self.conda_wsl.condaRunCommand, args=(command,))
 
-              # running in // to not block Slicer
-              process = threading.Thread(target=self.conda_wsl.condaRunCommand, args=(command,))
+                self.process.start()
+                self.onProcessStarted()
+                self.ui.labelBar.setText(f'Loading {task} model...')
 
-              process.start()
-              self.onProcessStarted()
-              self.ui.applyChangesButton.setEnabled(False)
-              self.ui.doneLabel.setHidden(True)
-              self.ui.timeLabel.setHidden(False)
-              self.ui.progressLabel.setHidden(False)
-              self.ui.progressBar.setHidden(False)
-              self.ui.timeLabel.setText(f"time : 0.00s")
-              start_time = time.time()
-              previous_time = start_time
-              while process.is_alive():
-                slicer.app.processEvents()
-                self.onProcessUpdate()
-                current_time = time.time()
-                gap=current_time-previous_time
-                if gap>0.3:
-                  previous_time = current_time
-                  elapsed_time = current_time - start_time
-                  self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
+                self.ui.applyChangesButton.setEnabled(False)
+                self.ui.doneLabel.setHidden(True)
+                self.ui.timeLabel.setHidden(False)
+                self.ui.progressLabel.setHidden(False)
+                self.ui.progressBar.setHidden(False)
+                # self.ui.timeLabel.setText(f"time : 0.00s")
+                start_time = time.time()
+                previous_time = start_time
+                while self.process.is_alive():
+                  slicer.app.processEvents()
+                  self.onProcessUpdate()
+                  current_time = time.time()
+                  gap=current_time-previous_time
+                  if gap>0.3:
+                    previous_time = current_time
+                    elapsed_time = current_time - start_time
+                    self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
+                self.resetProgressBar()
+              
           else:
               args = [self.input_dir, self.output, self.data_type, 'severity']
               conda_exe = self.conda_wsl.getCondaExecutable()
@@ -573,8 +575,11 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
 
               # running in // to not block Slicer
-              process = threading.Thread(target=self.conda_wsl.condaRunCommand, args=(command,))
-              process.start()
+              self.process = threading.Thread(target=self.conda_wsl.condaRunCommand, args=(command,))
+              self.process.start()
+              self.onProcessStarted()
+              self.ui.labelBar.setText('Loading severity model...')
+
               self.ui.applyChangesButton.setEnabled(False)
               self.ui.doneLabel.setHidden(True)
               self.ui.timeLabel.setHidden(False)
@@ -582,7 +587,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
               self.ui.timeLabel.setText(f"time : 0.00s")
               start_time = time.time()
               previous_time = start_time
-              while process.is_alive():
+              while self.process.is_alive():
                 slicer.app.processEvents()
                 current_time = time.time()
                 gap=current_time-previous_time
@@ -590,19 +595,14 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                   previous_time = current_time
                   elapsed_time = current_time - start_time
                   self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
+              self.onProcessCompleted()
 
-          self.ui.progressLabel.setHidden(True)
-          self.ui.doneLabel.setHidden(False)
-          self.ui.applyChangesButton.setEnabled(True)
-
-          # Delete csv file
-          file_path = os.path.abspath(__file__)
-          folder_path = os.path.dirname(file_path)
-          csv_file = os.path.join(folder_path,"list_file.csv")
-          if os.path.exists(csv_file):
-            os.remove(csv_file)
+          # self.ui.progressLabel.setHidden(True)
+          # self.ui.doneLabel.setHidden(False)
+          # self.ui.applyChangesButton.setEnabled(True)
             
       self.ui.applyChangesButton.setEnabled(True)
+      self.ui.cancelButton.setHidden(True)
   
   def parall_process(self,function,arguments=[],message=""):
     process = threading.Thread(target=function, args=tuple(arguments)) #run in paralle to not block slicer
@@ -619,6 +619,23 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         self.ui.timeLabel.setText(f"{message}\ntime: {elapsed_time:.1f}s")
 
 
+  def resetProgressBar(self):
+    self.ui.progressBar.setValue(0)
+    self.progress = 0
+    self.previous_task='predict'
+    self.process_completed= False
+
+    self.ui.timeLabel.setVisible(False)
+    self.ui.labelBar.setVisible(False)
+    self.ui.progressLabel.setText('Prediction in progress...')
+    self.ui.progressLabel.setVisible(False)
+    
+    self.ui.progressBar.setVisible(False)
+    self.ui.progressBar.setRange(0,100)
+    self.ui.progressBar.setTextVisible(True)
+    self.ui.progressBar.setValue(0)
+    self.ui.progressBar.setFormat("")
+
   def onProcessStarted(self):
     self.nbSubjects = 0
     self.nbSubjects += sum(1 for elt in os.listdir(self.input_dir) if os.path.splitext(elt)[1] == '.vtk')
@@ -626,19 +643,22 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.ui.progressBar.setValue(0)
     self.progress = 0
     self.previous_task='predict'
+    self.process_completed= False
       
     self.start_time = time.time()
     self.previous_time = self.start_time  
     
     self.ui.applyChangesButton.setEnabled(False)
     self.ui.doneLabel.setHidden(True)
+    self.ui.cancelButton.setHidden(False)
+    self.ui.labelBar.setHidden(False)
     self.ui.timeLabel.setHidden(False)
     self.ui.progressLabel.setHidden(False)
     self.ui.progressBar.setHidden(False)
     self.ui.timeLabel.setText(f"time : 0.00s") 
 
 
-  def onProcessUpdate(self,caller,event):
+  def onProcessUpdate(self):
     # check log file
     if os.path.isfile(self.log_path):
       time_progress = os.path.getmtime(self.log_path)
@@ -658,11 +678,13 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
               self.previous_task = current_task
 
             if current_task == 'explainability':
-              self.ui.progressLabel.setText('Explainability in progres...')
+              self.ui.progressLabel.setText('Explainability in progress...')
               self.ui.labelBar.setText(f"Class {class_idx} - Number of processed subjects : {self.progress}/{self.nbSubjects}")
               total_progress = self.progress + int(class_idx) * self.nbSubjects
               overall_progress = total_progress / (self.nbSubjects * int(num_classes)) * 100
               progressbar_value = round(overall_progress, 2)
+              if progressbar_value == 100:
+                self.process_completed=True
 
             else:
               self.ui.labelBar.setText(f"Number of processed subjects : {self.progress}/{self.nbSubjects}")
@@ -670,12 +692,12 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
             self.time_log = time_progress
 
-            if progressbar_value < 100 :
-                self.ui.progressBar.setValue(progressbar_value)
-                self.ui.progressBar.setFormat(str(progressbar_value)+"%")
-            else:
-                self.ui.progressBar.setValue(99)
-                self.ui.progressBar.setFormat("99%")
+            # if progressbar_value < 100 :
+            self.ui.progressBar.setValue(progressbar_value)
+            self.ui.progressBar.setFormat(str(progressbar_value)+"%")
+            # else:
+            #     self.ui.progressBar.setValue(99)
+            #     self.ui.progressBar.setFormat("99%")
           
         
 
@@ -688,14 +710,24 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
       
 
       # if self.logic.cliNode.GetStatus() & self.logic.cliNode.Completed:
-      # # process complete
-      #   self.ui.applyChangesButton.setEnabled(True)
-      #   self.ui.resetButton.setEnabled(True)
-      #   self.ui.progressLabel.setHidden(False)     
-      #   self.ui.cancelButton.setEnabled(False)
-      #   self.ui.progressBar.setEnabled(False)
-      #   self.ui.progressBar.setHidden(True)
-      #   self.ui.progressLabel.setHidden(True)
+      # if self.process_completed:
+      # process complete
+  def onProcessCompleted(self):
+    self.ui.applyChangesButton.setEnabled(True)
+    self.ui.resetButton.setEnabled(True)
+    self.ui.progressLabel.setHidden(False)     
+    self.ui.cancelButton.setHidden(True)
+    # self.ui.progressBar.setEnabled(False)
+    # self.ui.progressBar.setHidden(True)
+    # self.ui.progressLabel.setHidden(True)
+    # self.ui.labelBar.setHidden(True)
+    self.resetProgressBar()
+    self.ui.doneLabel.setHidden(False)
+    print("Process completed successfully.")
+    
+    elapsed_time = round(time.time() - self.start_time,3)
+    self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
+
 
       #   if self.logic.cliNode.GetStatus() & self.logic.cliNode.ErrorsMask:
       #     # error
@@ -735,17 +767,28 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.ui.mountPointLineEdit.setText("")
 
     self.ui.applyChangesButton.setEnabled(True)
+    self.resetProgressBar()
     self.ui.progressLabel.setHidden(True)
-    self.ui.progressBar.setValue(0)
     self.ui.doneLabel.setHidden(True)
     self.ui.timeLabel.setHidden(True)
 
     self.removeObservers()  
 
   def onCancel(self):
-    self.logic.cliNode.Cancel()
+    print("cancelling processs, be patient")
+    self.ui.labelBar.setText(f'Cancelling process...')
+    if self.process: # windows
+      # self.stop_flag.set()
+      # self.process.join()
+      self.process.join()
+
+    else: #linux
+      self.logic.cliNode.Cancel()
+
+    self.cancel=True
     self.ui.applyChangesButton.setEnabled(True)
     self.ui.resetButton.setEnabled(True)
+    self.resetProgressBar()
     self.ui.progressBar.setEnabled(False)
     self.ui.progressBar.setRange(0,100)
     self.ui.progressLabel.setHidden(True)
