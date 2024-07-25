@@ -530,9 +530,9 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
           
           if 'Airway' in self.data_type.split(' '):
-            for task in ['binary', 'severity', 'regression']:
+            for self.task in ['binary', 'severity', 'regression']:
               if not self.cancel :
-                args = [self.input_dir, self.output, self.data_type, task, self.log_path]
+                args = [self.input_dir, self.output, self.data_type, self.task, self.log_path]
 
                 conda_exe = self.conda_wsl.getCondaExecutable()
                 command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
@@ -544,7 +544,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
                 self.process.start()
                 self.onProcessStarted()
-                self.ui.labelBar.setText(f'Loading {task} model...')
+                self.ui.labelBar.setText(f'Loading {self.task} model...')
 
                 self.ui.applyChangesButton.setEnabled(False)
                 self.ui.doneLabel.setHidden(True)
@@ -566,7 +566,8 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                 self.resetProgressBar()
               
           else:
-              args = [self.input_dir, self.output, self.data_type, 'severity']
+              self.task = 'severity'
+              args = [self.input_dir, self.output, self.data_type, self.task]
               conda_exe = self.conda_wsl.getCondaExecutable()
               command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
               for arg in args :
@@ -578,7 +579,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
               self.process = threading.Thread(target=self.conda_wsl.condaRunCommand, args=(command,))
               self.process.start()
               self.onProcessStarted()
-              self.ui.labelBar.setText('Loading severity model...')
+              self.ui.labelBar.setText(f'Loading {self.task} model...')
 
               self.ui.applyChangesButton.setEnabled(False)
               self.ui.doneLabel.setHidden(True)
@@ -622,7 +623,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
   def resetProgressBar(self):
     self.ui.progressBar.setValue(0)
     self.progress = 0
-    self.previous_task='predict'
+    self.previous_saxi_task='predict'
     self.process_completed= False
 
     self.ui.timeLabel.setVisible(False)
@@ -642,7 +643,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
     self.ui.progressBar.setValue(0)
     self.progress = 0
-    self.previous_task='predict'
+    self.previous_saxi_task='predict'
     self.process_completed= False
       
     self.start_time = time.time()
@@ -668,18 +669,18 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         with open(self.log_path, 'r') as f:
           line = f.readline()
           if line != '':
-            current_task, progress, class_idx, num_classes = line.strip().split(',')
+            current_saxi_task, progress, class_idx, num_classes = line.strip().split(',')
             self.progress = int(progress)
 
-            if self.previous_task != current_task: 
+            if self.previous_saxi_task != current_saxi_task: 
               print("reset progress bar and self.progresss")
               self.progress = 0
               self.ui.progressBar.setValue(0)
-              self.previous_task = current_task
+              self.previous_saxi_task = current_saxi_task
 
-            if current_task == 'explainability':
+            if current_saxi_task == 'explainability':
               self.ui.progressLabel.setText('Explainability in progress...')
-              self.ui.labelBar.setText(f"Class {class_idx} - Number of processed subjects : {self.progress}/{self.nbSubjects}")
+              self.ui.labelBar.setText(f"{self.task} model\nClass {class_idx}/{int(num_classes)-1} \nNumber of processed subjects : {self.progress}/{self.nbSubjects}")
               total_progress = self.progress + int(class_idx) * self.nbSubjects
               overall_progress = total_progress / (self.nbSubjects * int(num_classes)) * 100
               progressbar_value = round(overall_progress, 2)
@@ -687,7 +688,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                 self.process_completed=True
 
             else:
-              self.ui.labelBar.setText(f"Number of processed subjects : {self.progress}/{self.nbSubjects}")
+              self.ui.labelBar.setText(f"{self.task} model\nNumber of processed subjects : {self.progress}/{self.nbSubjects}")
               progressbar_value = round((self.progress) /self.nbSubjects * 100,2)
 
             self.time_log = time_progress
