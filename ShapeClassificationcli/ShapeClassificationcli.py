@@ -136,7 +136,7 @@ def csv_edit(args):
           print(f"Missing files: {surf}")
         else:
           with open(args.input_csv, 'a') as f:
-              f.write(f"{surf},-1\n")
+              f.write(f"{surf}\n")
 
 ## OK - W
 def download_model(model_name, output_path):
@@ -149,86 +149,89 @@ def download_model(model_name, output_path):
 def gradcam_all_classes(args, out_model_path):
   print("Running Explainability....")
 
-  # NN = getattr(saxi_nets, args.nn)    
-  # model = NN.load_from_checkpoint(out_model_path, strict=False)
-  # model.ico_sphere(radius=model.hparams.radius, subdivision_level=model.hparams.subdivision_level)
+  NN = getattr(saxi_nets, args.nn)    
+  model = NN.load_from_checkpoint(out_model_path, strict=False)
+  model.ico_sphere(radius=model.hparams.radius, subdivision_level=model.hparams.subdivision_level)
 
-  # model.eval()
-  # model.cuda()
+  model.eval()
+  model.cuda()
 
   fname = os.path.basename(args.input_csv)
   predicted_csv = os.path.join(args.output_dir, fname.replace('.csv', "_prediction.csv"))
   df = pd.read_csv(predicted_csv)
 
-  if args.nn == 'SaxiMHAFBClassification':
-      num_classes = 4 #model.hparams.num_classes
-  elif args.nn == 'SaxiMHAFBRegression':
-      num_classes = 1
 
   model_cam_mv = nn.Sequential(
-      # model.convnet,
-      # model.ff_fb,
-      # MultiHead(model.mha_fb),
-      # SelfAttention(model.attn_fb),
-      # nn.Linear(model.hparams.output_dim, num_classes)
-      nn.Linear(12, 12) ## for testing purpose
+      model.convnet,
+      model.ff_fb,
+      MultiHead(model.mha_fb),
+      SelfAttention(model.attn_fb),
+      nn.Linear(model.hparams.output_dim, args.num_classes)
+      # nn.Linear(12, 12) ## for testing purpose
       )
 
-  # model_cam_mv.cuda()
+  model_cam_mv.cuda()
 
-  for class_idx in range(num_classes):
-    print(f"class {class_idx}/{num_classes-1}")
+  for class_idx in range(args.num_classes):
+    print(f"class {class_idx}/{args.num_classes-1}")
     if args.nn == 'SaxiMHAFBRegression':
       class_idx = None
 
-    saxi_gradcam(args, model_cam_mv, class_idx, df)
+    saxi_gradcam(args, model_cam_mv, model, class_idx, df)
 
 
-def saxi_gradcam(args, model_cam_mv, class_idx,df):
+def saxi_gradcam(args, model_cam_mv, model, class_idx, df_test):
 
-    test_ds = SaxiDataset(df, transform=EvalTransform(), mount_point = args.input_dir,**vars(args))
+    test_ds = SaxiDataset(df_test, transform=EvalTransform(), CN=True, 
+                          surf_column=model.hparams.surf_column, mount_point = args.input_dir, 
+                          class_column=None, scalar_column=model.hparams.scalar_column, **vars(args))
+    
     test_loader = DataLoader(test_ds, batch_size=1, pin_memory=False)
 
-    # target_layer = getattr(model_cam_mv[0].module, '_blocks')
-    # target_layers = None 
+    target_layer = getattr(model_cam_mv[0].module, '_blocks')
+    target_layers = None 
 
-    # if isinstance(target_layer, nn.Sequential):
-    #     target_layer = target_layer[-1]
-    #     target_layers = [target_layer]
+    if isinstance(target_layer, nn.Sequential):
+        target_layer = target_layer[-1]
+        target_layers = [target_layer]
 
     # Construct the CAM object
-    # cam = GradCAM(model=model_cam_mv, target_layers=target_layers)
+    cam = GradCAM(model=model_cam_mv, target_layers=target_layers)
 
-    # targets = None
-    # if not class_idx is None:
-    #     targets = [ClassifierOutputTarget(class_idx)]
+    targets = None
+    args.target_class = class_idx
+    out_dir = os.path.join(args.output_dir, "explainability", args.task)
+    if not args.target_class is None:
+      targets = [ClassifierOutputTarget(args.target_class)]
+      out_dir = os.path.join(out_dir, str(args.target_class))
+    else:
+      class_idx = 0
+      
+    scale_intensity = ScaleIntensityRange(0.0, 1.0, 0, 255)
 
-    # scale_intensity = ScaleIntensityRange(0.0, 1.0, 0, 255)
-
-    out_dir = os.path.join(args.output_dir, "explainability", str(class_idx))
 
     for idx, (V, F, CN) in tqdm(enumerate(test_loader), total=len(test_loader)):
       # The generated CAM is processed and added to the input surface mesh (surf) as a point data array
-      # V = V.cuda(non_blocking=True)
-      # F = F.cuda(non_blocking=True)
-      # CN = CN.cuda(non_blocking=True)
+      V = V.cuda(non_blocking=True)
+      F = F.cuda(non_blocking=True)
+      CN = CN.cuda(non_blocking=True)
       
-      # X_mesh = model.create_mesh(V, F, CN)
-      # X_views, PF = model.render(X_mesh)
+      X_mesh = model.create_mesh(V, F, CN)
+      X_views, PF = model.render(X_mesh)
 
-      # gcam_np = cam(input_tensor=X_views, targets=targets)
+      gcam_np = cam(input_tensor=X_views, targets=targets)
 
-      # Vcam = gradcam_process(args, gcam_np, F, PF, V, device)
+      Vcam = gradcam_process(args, gcam_np, F, PF, V, device='cuda')
 
-      # surf = test_ds.getSurf(idx)
-      # surf.GetPointData().AddArray(Vcam)
+      surf = test_ds.getSurf(idx)
+      surf.GetPointData().AddArray(Vcam)
 
-      # # Median filtering is applied to smooth the CAM on the surface
-      # psp.MedianFilter(surf, Vcam)
+      # Median filtering is applied to smooth the CAM on the surface
+      psp.MedianFilter(surf, Vcam)
 
-      # surf_path = os.path.join(args.mount_point, df_test.loc[idx][args.surf_column])
+      surf_path = os.path.join(args.input_dir, df_test.loc[idx]['surf'])
 
-      # gradcam_save(args, out_dir, Vcam, surf_path, surf)
+      gradcam_save(args, out_dir, Vcam, surf_path, surf)
 
       # ##TO DO: find csv prediction file + output_dir is /test/
       # command = ['python', '-m', 'shapeaxi.saxi_gradcam', 
@@ -244,9 +247,9 @@ def saxi_gradcam(args, model_cam_mv, class_idx,df):
       # print("Output : ",result.stdout)
       # print("Error : ",result.stderr)
       
-        with open(args.log_path,'w+') as log_f :
-          # log_f.write(f"explainability,{idx},{class_idx},{model.hparams.num_classes}")
-          log_f.write(f"explainability,{idx+1},{class_idx},2")
+      with open(args.log_path,'w+') as log_f :
+        log_f.write(f"explainability,{idx},{class_idx},{args.num_classes}")
+        # log_f.write(f"explainability,{idx+1},{class_idx},2")
 
 
 
@@ -272,7 +275,7 @@ def saxi_predict(args,out_model_path): ## I think it works -> need to test on re
     
     test_ds = SaxiDataset(df, transform=EvalTransform(scale_factor), CN=True, 
                           surf_column=model.hparams.surf_column, mount_point = args.input_dir, 
-                          class_column='class', scalar_column=model.hparams.scalar_column, **vars(args))
+                          class_column=None, scalar_column=model.hparams.scalar_column, **vars(args))
     
     test_loader = DataLoader(test_ds, batch_size=1, pin_memory=False)
 
@@ -282,32 +285,37 @@ def saxi_predict(args,out_model_path): ## I think it works -> need to test on re
       predictions = []
       softmax = nn.Softmax(dim=1)
 
-      for idx, (V, F, CN, L) in tqdm(enumerate(test_loader), total=len(test_loader)):
-        # V = V.cuda(non_blocking=True)
-        # F = F.cuda(non_blocking=True)
-        # CN = CN.cuda(non_blocking=True)
+      for idx, (V, F, CN) in tqdm(enumerate(test_loader), total=len(test_loader)):
+        V = V.cuda(non_blocking=True)
+        F = F.cuda(non_blocking=True)
+        CN = CN.cuda(non_blocking=True)
         
-        # X_mesh = model.create_mesh(V, F, CN)
-        # x, x_w, X = model(X_mesh)
-        # x = softmax(x).detach()
+        X_mesh = model.create_mesh(V, F, CN)
+        x, x_w, X = model(X_mesh)
         
-        # if args.nn == 'SaxiMHAFBClassification': # no argmax for regression
-        #   x = torch.argmax(x, dim=1, keepdim=True)
-        # predictions.append(x)
+        if args.nn == 'SaxiMHAFBClassification': # no argmax for regression
+          x = softmax(x).detach()
+          x = torch.argmax(x, dim=1, keepdim=True)
+        predictions.append(x)
 
         with open(args.log_path,'w+') as log_f :
-          log_f.write(f"predict,{idx+1},NaN,{model.hparams.num_classes}")
+          log_f.write(f"predict,{idx+1},NaN,{args.num_classes}")
 
 
-      # predictions = torch.cat(predictions).cpu().numpy().squeeze()
+      predictions = torch.cat(predictions).cpu().numpy().squeeze()
 
-      # df[f'pred_{args.task}'] = predictions
-      # out_name = os.path.join(args.out_dir, fname.replace(".csv", "_prediction.csv"))
-      # df.to_csv(out_name, index=False)
+      out_name = os.path.join(args.output_dir, fname.replace(".csv", "_prediction.csv"))
+      if os.path.exists(out_name):
+        df = pd.read_csv(out_name)
+
+      df[f'{args.task}_prediction'] = predictions
+      df.to_csv(out_name, index=False)
 
 ## OK - W
 def linux2windows_path(filepath):
   if ':' in filepath:
+    if '\\' in filepath:
+      filepath = filepath.replace('\\', '/')
     drive, path_without_drive = filepath.split(':', 1)
     filepath = "/mnt/" + drive.lower() + path_without_drive
     return filepath
@@ -317,15 +325,14 @@ def linux2windows_path(filepath):
 ## OK - W
 def create_csv(input_file):
   with open(input_file, "w") as f:
-    f.write("surf,class\n")
+    f.write("surf\n")
    
 ## OK - 
 def main(args):
 
   model_name, args.nn = find_best_model(args.data_type)
-
   # convert path if windows distribution
-  args.input_csv = linux2windows_path(os.path.join(args.output_dir, f"files_{model_name}.csv"))
+  args.input_csv = linux2windows_path(os.path.join(args.output_dir, f"files_{args.data_type}.csv"))
   args.input_dir = linux2windows_path(args.input_dir)
   args.output_dir = linux2windows_path(args.output_dir)
   args.log_path = linux2windows_path(args.log_path)
