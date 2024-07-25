@@ -498,14 +498,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
               
                 process = threading.Thread(target=self.conda_wsl.condaRunCommand, args=(command,)) # launch install_pythorch.py with the environnement ali_ios to install pytorch3d on it
                 process.start()
-              # file_path = os.path.realpath(__file__)
-              # folder = os.path.dirname(file_path)
-              # utils_folder = os.path.join(folder, "utils")
-              # utils_folder_norm = os.path.normpath(utils_folder)
-              # install_path = self.windows_to_linux_path(os.path.join(utils_folder_norm, 'install_pytorch.py'))
-              # path_pip = self.conda_wsl.getCondaPath()+"/envs/shapeaxi/bin/pip"
-              # process = threading.Thread(target=self.conda_wsl.condaRunFilePython, args=(install_path,name_env,[path_pip],)) # launch install_pythorch.py with the environnement ali_ios to install pytorch3d on it
-              # process.start()
               
               while process.is_alive():
                 slicer.app.processEvents()
@@ -551,7 +543,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                 self.ui.timeLabel.setHidden(False)
                 self.ui.progressLabel.setHidden(False)
                 self.ui.progressBar.setHidden(False)
-                # self.ui.timeLabel.setText(f"time : 0.00s")
                 start_time = time.time()
                 previous_time = start_time
                 while self.process.is_alive():
@@ -597,10 +588,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                   elapsed_time = current_time - start_time
                   self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
               self.onProcessCompleted()
-
-          # self.ui.progressLabel.setHidden(True)
-          # self.ui.doneLabel.setHidden(False)
-          # self.ui.applyChangesButton.setEnabled(True)
             
       self.ui.applyChangesButton.setEnabled(True)
       self.ui.cancelButton.setHidden(True)
@@ -660,11 +647,9 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
 
   def onProcessUpdate(self):
-    # check log file
     if os.path.isfile(self.log_path):
       time_progress = os.path.getmtime(self.log_path)
 
-        # if progress was made
       if time_progress != self.time_log :
         with open(self.log_path, 'r') as f:
           line = f.readline()
@@ -693,35 +678,15 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
             self.time_log = time_progress
 
-            # if progressbar_value < 100 :
             self.ui.progressBar.setValue(progressbar_value)
             self.ui.progressBar.setFormat(str(progressbar_value)+"%")
-            # else:
-            #     self.ui.progressBar.setValue(99)
-            #     self.ui.progressBar.setFormat("99%")
-          
-        
 
-      # current_time = time.time()
-      # gap = current_time - self.previous_time
-      # if gap > 0.3:
-      #   self.previous_time = current_time
-      #   elapsed_time = current_time - self.start_time
-      #   self.ui.timeLabel.setText(f"prediction in process\ntime : {elapsed_time:.2f}s")
-      
 
-      # if self.logic.cliNode.GetStatus() & self.logic.cliNode.Completed:
-      # if self.process_completed:
-      # process complete
   def onProcessCompleted(self):
     self.ui.applyChangesButton.setEnabled(True)
     self.ui.resetButton.setEnabled(True)
     self.ui.progressLabel.setHidden(False)     
     self.ui.cancelButton.setHidden(True)
-    # self.ui.progressBar.setEnabled(False)
-    # self.ui.progressBar.setHidden(True)
-    # self.ui.progressLabel.setHidden(True)
-    # self.ui.labelBar.setHidden(True)
     self.resetProgressBar()
     self.ui.doneLabel.setHidden(False)
     print("Process completed successfully.")
@@ -729,39 +694,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     elapsed_time = round(time.time() - self.start_time,3)
     self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
 
-
-      #   if self.logic.cliNode.GetStatus() & self.logic.cliNode.ErrorsMask:
-      #     # error
-      #     errorText = self.logic.cliNode.GetErrorText()
-      #     print("CLI execution failed: \n \n" + errorText)
-      #     msg = qt.QMessageBox()
-      #     msg.setText(f'There was an error during the process:\n \n {errorText} ')
-      #     msg.setWindowTitle("Error")
-      #     msg.exec_()
-
-      #   else:
-      #     # success
-      #     print('PROCESS DONE.')
-      #     print(self.logic.cliNode.GetOutputText())
-      #     self.ui.progressBar.setValue(100)
-      #     self.ui.progressBar.setFormat("100%")
-
-      #     self.ui.progressLabel.setHidden(True)
-      #     self.ui.doneLabel.setHidden(False)
-      #     self.ui.applyChangesButton.setEnabled(True)
-      #     print("Process completed successfully.")
-          
-      #     elapsed_time = round(time.time() - self.startTime,3)
-      #     self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
-          
-      #     print("*"*25,"Output cli","*"*25)
-      #     print(self.logic.cliNode.GetOutputText())
-          
-      #     file_path = os.path.abspath(__file__)
-      #     folder_path = os.path.dirname(file_path)
-      #     csv_file = os.path.join(folder_path,"list_file.csv")
-      #     if os.path.exists(csv_file):
-      #       os.remove(csv_file)
+    self.ui.doneLabel.setHidden(False)
       
   def onReset(self):
     self.ui.outputLineEdit.setText("")
@@ -779,8 +712,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     print("cancelling processs, be patient")
     self.ui.labelBar.setText(f'Cancelling process...')
     if self.process: # windows
-      # self.stop_flag.set()
-      # self.process.join()
       self.process.join()
 
     else: #linux
