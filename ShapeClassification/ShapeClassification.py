@@ -2,13 +2,8 @@ import os
 import vtk, qt, slicer
 from slicer.ScriptedLoadableModule import *
 from slicer.util import VTKObservationMixin, pip_install
-from enum import Enum
 import subprocess
 import platform
-
-import webbrowser
-import csv
-import io
 import sys
 import time
 import threading
@@ -581,6 +576,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
               previous_time = start_time
               while self.process.is_alive():
                 slicer.app.processEvents()
+                self.onProcessUpdate()
                 current_time = time.time()
                 gap=current_time-previous_time
                 if gap>0.3:
@@ -784,14 +780,6 @@ class ShapeClassificationLogic(ScriptedLoadableModuleLogic):
   Uses ScriptedLoadableModuleLogic base class, available at:
   https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('input_csv',type = str, help='input csv file containing .vtk files')
-    parser.add_argument('model',type=str, help="path to model")
-    parser.add_argument('surf_column',type=str, "surface column name in csv file")
-    parser.add_argument('mount_point',type=str)
-    parser.add_argument('nn',type=str, help="type of neural netowrk")
-    parser.add_argument('out',type=str, help="output directory")
-
   """
 
   def __init__(self, input_dir = "None", output_dir="None", data_type="None", task='severity', log_path='./'):
@@ -804,7 +792,6 @@ class ShapeClassificationLogic(ScriptedLoadableModuleLogic):
     self.data_type = data_type
     self.task = task
     self.log_path = log_path
-    print("CLI before: ", log_path)
 
   def process(self):
     """

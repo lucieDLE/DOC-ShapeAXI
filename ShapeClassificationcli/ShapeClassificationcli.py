@@ -21,13 +21,7 @@ from shapeaxi.saxi_gradcam import gradcam_process
 
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
-import cv2
-import monai
-from monai.transforms import (    
-    ScaleIntensityRange
-)
 import vtk
-from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 
 from shapeaxi import saxi_nets, post_process as psp, utils
 
@@ -41,7 +35,6 @@ def gradcam_save(args, gradcam_path, V_gcam, surf_path, surf):
         V_gcam : GradCAM values
         surf_path : path to the surface
         surf : surface read by utils.ReadSurf
-        hemisphere : hemisphere (lh or rh)
     '''
 
     if not os.path.exists(gradcam_path):
@@ -197,9 +190,6 @@ def saxi_gradcam(args, model_cam_mv, model, class_idx, df_test):
       out_dir = os.path.join(out_dir, str(args.target_class))
     else:
       class_idx = 0
-      
-    scale_intensity = ScaleIntensityRange(0.0, 1.0, 0, 255)
-
 
     for idx, (V, F, CN) in tqdm(enumerate(test_loader), total=len(test_loader)):
       # The generated CAM is processed and added to the input surface mesh (surf) as a point data array
@@ -225,7 +215,7 @@ def saxi_gradcam(args, model_cam_mv, model, class_idx, df_test):
         log_f.write(f"explainability,{idx},{class_idx},{args.num_classes}")
 
 
-def saxi_predict(args,out_model_path): ## I think it works -> need to test on real machine
+def saxi_predict(args,out_model_path):
     print("Running Prediction....")
 
     df = pd.read_csv(args.input_csv)
