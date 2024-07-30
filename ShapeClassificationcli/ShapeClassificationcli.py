@@ -140,7 +140,7 @@ def gradcam_all_classes(args, out_model_path):
   model.ico_sphere(radius=model.hparams.radius, subdivision_level=model.hparams.subdivision_level)
 
   model.eval()
-  model.cuda()
+  model.to(args.device)
 
   fname = os.path.basename(args.input_csv)
   predicted_csv = os.path.join(args.output_dir, fname.replace('.csv', "_prediction.csv"))
@@ -155,7 +155,7 @@ def gradcam_all_classes(args, out_model_path):
       nn.Linear(model.hparams.output_dim, args.num_classes)
       )
 
-  model_cam_mv.cuda()
+  model_cam_mv.to(args.device)
 
   for class_idx in range(args.num_classes):
     print(f"class {class_idx}/{args.num_classes-1}")
@@ -193,9 +193,9 @@ def saxi_gradcam(args, model_cam_mv, model, class_idx, df_test):
 
     for idx, (V, F, CN) in tqdm(enumerate(test_loader), total=len(test_loader)):
       # The generated CAM is processed and added to the input surface mesh (surf) as a point data array
-      V = V.cuda(non_blocking=True)
-      F = F.cuda(non_blocking=True)
-      CN = CN.cuda(non_blocking=True)
+      V = V.to(args.device)
+      F = F.to(args.device)
+      CN = CN.to(args.device)
       
       X_mesh = model.create_mesh(V, F, CN)
       X_views, PF = model.render(X_mesh)
@@ -223,7 +223,7 @@ def saxi_predict(args,out_model_path):
     NN = getattr(saxi_nets, args.nn)    
     model = NN.load_from_checkpoint(out_model_path, strict=False)
     model.eval()
-    model.cuda()
+    model.to(args.device)
 
     scale_factor = None
     if hasattr(model.hparams, 'scale_factor'):
@@ -242,9 +242,9 @@ def saxi_predict(args,out_model_path):
       softmax = nn.Softmax(dim=1)
 
       for idx, (V, F, CN) in tqdm(enumerate(test_loader), total=len(test_loader)):
-        V = V.cuda(non_blocking=True)
-        F = F.cuda(non_blocking=True)
-        CN = CN.cuda(non_blocking=True)
+        V = V.to(args.device)
+        F = F.to(args.device)
+        CN = CN.to(args.device)
         
         X_mesh = model.create_mesh(V, F, CN)
         x, x_w, X = model(X_mesh)
@@ -282,6 +282,9 @@ def create_csv(input_file):
     f.write("surf\n")
    
 def main(args):
+  import torch
+
+  args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
   model_name, args.nn = find_best_model(args.data_type)
   # convert path if windows distribution
