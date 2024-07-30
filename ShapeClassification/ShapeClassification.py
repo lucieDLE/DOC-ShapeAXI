@@ -17,40 +17,6 @@ import re
 #
 
 
-def func_import(install=False): 
-  # try : 
-  #   import shapeaxi 
-  # except ImportError:
-  #   pip_install('shapeaxi')
-
-  try:
-    import torch 
-    pytorch3d = pkg_resources.get_distribution("pytorch3d").version 
-  except:
-    print("torch not found")
-    try:
-      pip_install('torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu')
-      import torch
-      print("torch installed")
-    except:
-      print("Unable to install torch")
-    
-    try:
-      import pytorch3d
-    except ImportError:
-      try : 
-        import torch
-        pyt_version_str = torch.__version__.split("+")[0].replace(".", "")
-        version_str = "".join([f"py3{sys.version_info.minor}_cu", torch.version.cuda.replace(".", ""), f"_pyt{pyt_version_str}"])
-        pip_install('--upgrade pip')
-        pip_install('fvcore==0.1.5.post20220305')
-        pip_install(f'--no-index --no-cache-dir pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/{version_str}/download.html')
-      except:
-        pip_install('--no-cache-dir torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0+cu113 --extra-index-url https://download.pytorch.org/whl/cu113')
-        pip_install('--no-index --no-cache-dir pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py39_cu113_pyt1110/download.html')
-
-
-
 
 class ShapeClassification(ScriptedLoadableModule):
   """Uses ScriptedLoadableModule base class, available at:
@@ -665,21 +631,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             
       self.ui.applyChangesButton.setEnabled(True)
       self.ui.cancelButton.setHidden(True)
-  
-  def parall_process(self,function,arguments=[],message=""):
-    process = threading.Thread(target=function, args=tuple(arguments)) #run in paralle to not block slicer
-    process.start()
-    start_time = time.time()
-    previous_time = time.time()
-    while process.is_alive():
-      slicer.app.processEvents()
-      current_time = time.time()
-      gap=current_time-previous_time
-      if gap>0.3:
-        previous_time = current_time
-        elapsed_time = current_time - start_time
-        self.ui.timeLabel.setText(f"{message}\ntime: {elapsed_time:.1f}s")
-
 
   def resetProgressBar(self):
     self.ui.progressBar.setValue(0)
@@ -838,7 +789,7 @@ def is_ubuntu_installed(self)->bool:
     '''
     result = subprocess.run(['wsl', '--list'], capture_output=True, text=True)
     output = result.stdout.encode('utf-16-le').decode('utf-8')
-    clean_output = output.replace('\x00', '')  # Enlève tous les octets null
+    clean_output = output.replace('\x00', '')
 
     return 'Ubuntu' in clean_output
 
