@@ -383,8 +383,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
           ready = False
           messageBox.information(None, "Information", text)
       
-      # -------------------------------- check Miniconda installation -----------------
-
       if ready : # checking if miniconda installed
         self.ui.timeLabel.setText(f"Checking if miniconda is installed")
         if "Error" in self.conda.condaRunCommand([self.conda.getCondaExecutable(),"--version"]): # if conda is setup
@@ -392,9 +390,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
           text = "Code can't be launch. \nConda is not setup. Please go the extension CondaSetUp in SlicerConda to do it."
           ready = False
           messageBox.information(None, "Information", text)
-
-      # ------------------------------ check if ShapeAXI exist in environment 
-
 
       if ready : # checking if environment 'shapeaxi' exist and if no ask user permission to create and install required lib in it
         self.ui.timeLabel.setText(f"Checking if environnement exist")
@@ -420,7 +415,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             start_time = time.time()
             previous_time = start_time
             self.ui.timeLabel.setText(f"Installation of librairies into the new environnement. This task may take a few minutes.\ntime: 0.0s")
-            # ------------ installation of pytorch3d -------- 
 
             result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassification_utils.install_pytorch") ## return True 
             if not result_pythonpath :
@@ -451,10 +445,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
       else:
         ready=True
         print("shapeaxi already exists!")
-
-      #################### DONE shape axi installation
-
-      # ------------------------------ Access cli in environment 
           
       if ready : # if everything is ready launch script on the environnement shapeaxi
         result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
@@ -462,8 +452,6 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
           self.give_pythonpath_windows(name_env)
           result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
       
-        # ------------------------------ Create args list and send command to cli script 
-
         if 'Airway' in self.data_type.split(' '):
           for self.task in ['binary']:
             if not self.cancel :
