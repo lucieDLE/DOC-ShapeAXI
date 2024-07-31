@@ -452,76 +452,37 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
           self.give_pythonpath_windows(name_env)
           result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
       
-        if 'Airway' in self.data_type.split(' '):
-          for self.task in ['binary']:
-            if not self.cancel :
-              args = [self.input_dir, self.output, self.data_type, self.task, self.log_path]
+      args = [self.input_dir, self.output, self.data_type, self.log_path]
 
-              conda_exe = self.conda.getCondaExecutable()
-              command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
-              for arg in args :
-                    command.append("\""+arg+"\"")
+      conda_exe = self.conda.getCondaExecutable()
+      command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
+      for arg in args :
+            command.append("\""+arg+"\"")
 
-              # running in // to not block Slicer
-              self.process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
+      # running in // to not block Slicer
+      self.process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
 
-              self.process.start()
-              self.onProcessStarted()
-              self.ui.labelBar.setText(f'Loading {self.task} model...')
+      self.process.start()
+      self.onProcessStarted()
 
-              self.ui.applyChangesButton.setEnabled(False)
-              self.ui.doneLabel.setHidden(True)
-              self.ui.timeLabel.setHidden(False)
-              self.ui.progressLabel.setHidden(False)
-              self.ui.progressBar.setHidden(False)
-              start_time = time.time()
-              previous_time = start_time
-              while self.process.is_alive():
-                slicer.app.processEvents()
-                self.onProcessUpdate()
-                current_time = time.time()
-                gap=current_time-previous_time
-                if gap>0.3:
-                  previous_time = current_time
-                  elapsed_time = current_time - start_time
-                  self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
-              self.resetProgressBar()
-          self.onProcessCompleted()
+      self.ui.applyChangesButton.setEnabled(False)
+      self.ui.doneLabel.setHidden(True)
+      self.ui.timeLabel.setHidden(False)
+      self.ui.progressLabel.setHidden(False)
+      self.ui.progressBar.setHidden(False)
+      start_time = time.time()
+      previous_time = start_time
+      while self.process.is_alive():
+        slicer.app.processEvents()
+        self.onProcessUpdate()
+        current_time = time.time()
+        gap=current_time-previous_time
+        if gap>0.3:
+          previous_time = current_time
+          elapsed_time = current_time - start_time
+          self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
+      self.resetProgressBar()          
 
-        else:
-            self.task = 'severity'
-            args = [self.input_dir, self.output, self.data_type, self.task]
-            conda_exe = self.conda.getCondaExecutable()
-            command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
-            for arg in args :
-                  command.append("\""+arg+"\"")
-            print("The following command will be executed:\n",command)
-
-
-            # running in // to not block Slicer
-            self.process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
-            self.process.start()
-            self.onProcessStarted()
-            self.ui.labelBar.setText(f'Loading {self.task} model...')
-
-            self.ui.applyChangesButton.setEnabled(False)
-            self.ui.doneLabel.setHidden(True)
-            self.ui.timeLabel.setHidden(False)
-            self.ui.progressLabel.setHidden(False)
-            self.ui.timeLabel.setText(f"time : 0.00s")
-            start_time = time.time()
-            previous_time = start_time
-            while self.process.is_alive():
-              slicer.app.processEvents()
-              self.onProcessUpdate()
-              current_time = time.time()
-              gap=current_time-previous_time
-              if gap>0.3:
-                previous_time = current_time
-                elapsed_time = current_time - start_time
-                self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
-            self.onProcessCompleted()
-            
       self.ui.applyChangesButton.setEnabled(True)
       self.ui.cancelButton.setHidden(True)
 
@@ -530,7 +491,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.ui.progressBar.setValue(0)
     self.progress = 0
     self.previous_saxi_task='predict'
-    self.process_completed= False
+    # self.process_completed= False
 
     self.ui.timeLabel.setVisible(False)
     self.ui.labelBar.setVisible(False)
@@ -550,7 +511,9 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.ui.progressBar.setValue(0)
     self.progress = 0
     self.previous_saxi_task='predict'
-    self.process_completed= False
+    self.ui.labelBar.setText(f'Loading severity model...')
+
+    # self.process_completed= False
       
     self.start_time = time.time()
     self.previous_time = self.start_time  
@@ -573,32 +536,26 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         with open(self.log_path, 'r') as f:
           line = f.readline()
           if line != '':
-            current_saxi_task, progress, class_idx, num_classes = line.strip().split(',')
-            self.progress = int(progress)
-
-            if self.previous_saxi_task != current_saxi_task: 
-              print("reset progress bar and self.progresss")
-              self.progress = 0
-              self.ui.progressBar.setValue(0)
-              self.previous_saxi_task = current_saxi_task
-
-            if current_saxi_task == 'explainability':
-              self.ui.progressLabel.setText('Explainability in progress...')
-              self.ui.labelBar.setText(f"{self.task} model\nClass {class_idx}/{int(num_classes)-1} \nNumber of processed subjects : {self.progress}/{self.nbSubjects}")
-              total_progress = self.progress + int(class_idx) * self.nbSubjects
-              overall_progress = total_progress / (self.nbSubjects * int(num_classes)) * 100
-              progressbar_value = round(overall_progress, 2)
-              if progressbar_value == 100:
-                self.process_completed=True
-
+            self.task, current_saxi_task, progress, num_classes = line.strip().split(',')
+            if progress == 'NaN':
+              self.ui.labelBar.setText(f'Loading {self.task} model...')
             else:
-              self.ui.labelBar.setText(f"{self.task} model\nNumber of processed subjects : {self.progress}/{self.nbSubjects}")
+              self.progress = int(progress)
+              if self.previous_saxi_task != current_saxi_task: 
+                print("reset progress bar and self.progresss")
+                self.progress = 0
+                self.ui.progressBar.setValue(0)
+                self.previous_saxi_task = current_saxi_task
+
+              self.ui.progressLabel.setText(f'{current_saxi_task} in progress...')
+              self.ui.labelBar.setText(f"{self.task} model \nNumber of processed subjects : {self.progress}/{self.nbSubjects}")
               progressbar_value = round((self.progress) /self.nbSubjects * 100,2)
+              self.time_log = time_progress
 
-            self.time_log = time_progress
-
-            self.ui.progressBar.setValue(progressbar_value)
-            self.ui.progressBar.setFormat(str(progressbar_value)+"%")
+              self.ui.progressBar.setValue(progressbar_value)
+              self.ui.progressBar.setFormat(str(progressbar_value)+"%")
+            if self.task == 'Complete':
+              self.onProcessCompleted()
 
 
   def onProcessCompleted(self):
@@ -630,11 +587,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
   def onCancel(self):
     print("cancelling processs, be patient")
     self.ui.labelBar.setText(f'Cancelling process...')
-    if self.process: # windows
-      self.process.join()
-
-    else: #linux
-      self.logic.cliNode.Cancel()
+    self.process.join()
 
     self.cancel=True
     self.ui.applyChangesButton.setEnabled(True)
@@ -705,7 +658,7 @@ class ShapeClassificationLogic(ScriptedLoadableModuleLogic):
 
   """
 
-  def __init__(self, input_dir = "None", output_dir="None", data_type="None", task='severity', log_path='./'):
+  def __init__(self, input_dir = "None", output_dir="None", data_type="None", log_path='./'):
     
     """Called when the logic class is instantiated. Can be used for initializing member variables."""
     ScriptedLoadableModuleLogic.__init__(self)
@@ -713,7 +666,6 @@ class ShapeClassificationLogic(ScriptedLoadableModuleLogic):
     self.output_dir = output_dir
     self.input_dir = input_dir
     self.data_type = data_type
-    self.task = task
     self.log_path = log_path
 
   def process(self):
@@ -727,7 +679,7 @@ class ShapeClassificationLogic(ScriptedLoadableModuleLogic):
     parameters ["input_dir"] = self.input_dir
     parameters ["output_dir"] = self.output_dir
     parameters ['data_type'] = self.data_type
-    parameters ['task'] = self.task
+    # parameters ['task'] = self.task
     parameters['log_path'] = self.log_path
 
     shapeaxi_process = slicer.modules.shapeclassificationcli

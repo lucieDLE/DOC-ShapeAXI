@@ -134,6 +134,8 @@ def download_model(model_name, output_path):
 
 def gradcam_all_classes(args, out_model_path):
   print("Running Explainability....")
+  with open(args.log_path,'w+') as log_f :
+    log_f.write(f"{args.task},explainability,NaN,{args.num_classes}")
 
   NN = getattr(saxi_nets, args.nn)    
   model = NN.load_from_checkpoint(out_model_path, strict=False)
@@ -212,13 +214,16 @@ def saxi_gradcam(args, model_cam_mv, model, class_idx, df_test):
       gradcam_save(args, out_dir, Vcam, surf_path, surf)
       
       with open(args.log_path,'w+') as log_f :
-        log_f.write(f"explainability,{idx},{class_idx},{args.num_classes}")
+        log_f.write(f"{args.task},explainability,{idx},{args.num_classes}")
 
 
 def saxi_predict(args,out_model_path):
     print("Running Prediction....")
 
     df = pd.read_csv(args.input_csv)
+    with open(args.log_path,'w+') as log_f :
+      log_f.write(f"{args.task},predict,NaN,{args.num_classes}")
+
 
     NN = getattr(saxi_nets, args.nn)    
     model = NN.load_from_checkpoint(out_model_path, strict=False)
@@ -255,7 +260,7 @@ def saxi_predict(args,out_model_path):
         predictions.append(x)
 
         with open(args.log_path,'w+') as log_f :
-          log_f.write(f"predict,{idx+1},NaN,{args.num_classes}")
+          log_f.write(f"{args.task},predict,{idx+1},{args.num_classes}")
 
 
       predictions = torch.cat(predictions).cpu().numpy().squeeze()
@@ -322,8 +327,19 @@ if __name__ == '__main__':
   parser.add_argument('input_dir',type = str)
   parser.add_argument('output_dir',type=str)
   parser.add_argument('data_type',type = str)
-  parser.add_argument('task',type=str)
   parser.add_argument('log_path',type=str)
 
   args = parser.parse_args()
-  main(args)
+
+  if  'Airway' in args.data_type.split(' '):
+    tasks = ['severity', 'binary', 'regression']
+    for task in tasks:
+      args.task = task
+      main(args)
+
+  else:
+    args.task = 'severity'
+    main(args)
+
+  with open(args.log_path,'w+') as log_f :
+    log_f.write(f"Complete,NaN,NaN,NaN")
