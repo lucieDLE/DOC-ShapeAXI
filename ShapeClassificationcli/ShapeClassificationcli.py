@@ -26,13 +26,12 @@ import vtk
 from shapeaxi import saxi_nets, post_process as psp, utils
 
 
-def gradcam_save(args, gradcam_path, V_gcam, surf_path, surf):
+def gradcam_save(args, gradcam_path, surf_path, surf):
     '''
     Function to save the GradCAM on the surface
 
     Args : 
         gradcam_path : path to save the GradCAM
-        V_gcam : GradCAM values
         surf_path : path to the surface
         surf : surface read by utils.ReadSurf
     '''
@@ -43,13 +42,6 @@ def gradcam_save(args, gradcam_path, V_gcam, surf_path, surf):
     out_surf_path = os.path.join(gradcam_path, os.path.basename(surf_path))
 
     subprocess.call(["cp", surf_path, out_surf_path])
-
-    surf = utils.ReadSurf(out_surf_path)
-
-    surf.GetPointData().AddArray(V_gcam)
-
-    # Median filtering is applied to smooth the CAM on the surface
-    psp.MedianFilter(surf, V_gcam)
 
     writer = vtk.vtkPolyDataWriter()
     writer.SetFileName(out_surf_path)
@@ -132,7 +124,8 @@ def download_model(model_name, output_path):
     model_url = model_info[model_name]["url"]
     request.urlretrieve(model_url, output_path)
 
-def gradcam_all_classes(args, out_model_path):
+
+def saxi_gradcam(args, out_model_path):
   print("Running Explainability....")
   with open(args.log_path,'w+') as log_f :
     log_f.write(f"{args.task},explainability,NaN,{args.num_classes}")
@@ -158,49 +151,43 @@ def gradcam_all_classes(args, out_model_path):
       )
 
   model_cam_mv.to(args.device)
-
-  for class_idx in range(args.num_classes):
-    print(f"class {class_idx}/{args.num_classes-1}")
-    if args.nn == 'SaxiMHAFBRegression':
-      class_idx = None
-
-    saxi_gradcam(args, model_cam_mv, model, class_idx, df)
-
-
-def saxi_gradcam(args, model_cam_mv, model, class_idx, df_test):
-
-    test_ds = SaxiDataset(df_test, transform=EvalTransform(), CN=True, 
-                          surf_column=model.hparams.surf_column, mount_point = args.input_dir, 
-                          class_column=None, scalar_column=model.hparams.scalar_column, **vars(args))
     
-    test_loader = DataLoader(test_ds, batch_size=1, pin_memory=False)
+  test_ds = SaxiDataset(df, transform=EvalTransform(), CN=True, 
+                        surf_column=model.hparams.surf_column, mount_point = args.input_dir, 
+                        class_column=None, scalar_column=model.hparams.scalar_column, **vars(args))
+  
+  test_loader = DataLoader(test_ds, batch_size=1, pin_memory=False)
 
-    target_layer = getattr(model_cam_mv[0].module, '_blocks')
-    target_layers = None 
+  target_layer = getattr(model_cam_mv[0].module, '_blocks')
+  target_layers = None 
 
-    if isinstance(target_layer, nn.Sequential):
-        target_layer = target_layer[-1]
-        target_layers = [target_layer]
+  if isinstance(target_layer, nn.Sequential):
+      target_layer = target_layer[-1]
+      target_layers = [target_layer]
 
-    cam = GradCAM(model=model_cam_mv, target_layers=target_layers)
+  cam = GradCAM(model=model_cam_mv, target_layers=target_layers)
 
-    targets = None
-    args.target_class = class_idx
-    out_dir = os.path.join(args.output_dir, "explainability", args.task)
-    if not args.target_class is None:
-      targets = [ClassifierOutputTarget(args.target_class)]
-      out_dir = os.path.join(out_dir, str(args.target_class))
-    else:
-      class_idx = 0
+  targets = None
+  out_dir = os.path.join(args.output_dir, "explainability", args.task)
+  
+  for idx, (V, F, CN) in tqdm(enumerate(test_loader), total=len(test_loader)):
+    # The generated CAM is processed and added to the input surface mesh (surf) as a point data array
+    V = V.to(args.device)
+    F = F.to(args.device)
+    CN = CN.to(args.device)
+    
+    X_mesh = model.create_mesh(V, F, CN)
+    X_views, PF = model.render(X_mesh)
 
-    for idx, (V, F, CN) in tqdm(enumerate(test_loader), total=len(test_loader)):
-      # The generated CAM is processed and added to the input surface mesh (surf) as a point data array
-      V = V.to(args.device)
-      F = F.to(args.device)
-      CN = CN.to(args.device)
-      
-      X_mesh = model.create_mesh(V, F, CN)
-      X_views, PF = model.render(X_mesh)
+    surf_path = os.path.join(args.input_dir, df.loc[idx]['surf'])
+    surf = test_ds.getSurf(idx)
+
+    for class_idx in range(args.num_classes):
+      if args.nn == 'SaxiMHAFBRegression':
+        args.target_class = None
+      else:
+        args.target_class = class_idx
+        targets = [ClassifierOutputTarget(args.target_class)]
 
       gcam_np = cam(input_tensor=X_views, targets=targets)
 
@@ -208,13 +195,12 @@ def saxi_gradcam(args, model_cam_mv, model, class_idx, df_test):
 
       surf = test_ds.getSurf(idx)
       surf.GetPointData().AddArray(Vcam)
+      psp.MedianFilter(surf, Vcam)
 
-      surf_path = os.path.join(args.input_dir, df_test.loc[idx]['surf'])
-
-      gradcam_save(args, out_dir, Vcam, surf_path, surf)
-      
-      with open(args.log_path,'w+') as log_f :
-        log_f.write(f"{args.task},explainability,{idx},{args.num_classes}")
+    gradcam_save(args, out_dir, surf_path, surf)
+    
+    with open(args.log_path,'w+') as log_f :
+      log_f.write(f"{args.task},explainability,{idx},{args.num_classes}")
 
 
 def saxi_predict(args,out_model_path):
@@ -316,7 +302,7 @@ def main(args):
   saxi_predict(args, out_model_path)
   print("End prediction, starting explainability")
 
-  gradcam_all_classes(args, out_model_path)
+  saxi_gradcam(args, out_model_path)
 
   print("End explainability \nProcess Completed")
 
