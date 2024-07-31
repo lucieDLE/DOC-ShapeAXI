@@ -346,127 +346,21 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
       return
 
     else:
-        
+      # -------------------------------- STARTING ENV SET UP:  -----------------
+
       self.ui.timeLabel.setHidden(False)
+      ready = True
+      self.ui.timeLabel.setHidden(False)
+      slicer.app.processEvents()
+      
+      # -------------------------------- import SlicerConda envs + check wsl if windows:  -----------------
       if platform.system() != "Windows" : #if linux system
         from CondaSetUp import CondaSetUpCall
-
-        self.conda = CondaSetUpCall()  
-        ready = True
-        self.ui.timeLabel.setHidden(False)
-        slicer.app.processEvents()
-
         print("Linux")
-        if ready : # checking if miniconda installed
-          self.ui.timeLabel.setText(f"Checking if miniconda is installed")
-          if "Error" in self.conda.condaRunCommand([self.conda.getCondaExecutable(),"--version"]): # if conda is setup
-            messageBox = qt.QMessageBox()
-            text = "Code can't be launch. \nConda is not setup. Please go the extension CondaSetUp in SlicerConda to do it."
-            ready = False
-            messageBox.information(None, "Information", text)
-
-
-          if ready : # checking if environment 'shapeaxi' exist and if no ask user permission to create and install required lib in it
-            self.ui.timeLabel.setText(f"Checking if environnement exist")
-            if not self.conda.condaTestEnv('shapeaxi') : # check is environnement exist, if not ask user the permission to do it
-              userResponse = slicer.util.confirmYesNoDisplay("The environnement to run the classification doesn't exist, do you want to create it ? ", windowTitle="Env doesn't exist")
-              if userResponse :
-                start_time = time.time()
-                previous_time = start_time
-                self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: 0.0s")
-                name_env = "shapeaxi"
-                process = threading.Thread(target=self.conda.condaCreateEnv, args=(name_env,"3.9",["shapeaxi"],)) #run in paralle to not block slicer
-                process.start()
-                
-                while process.is_alive():
-                  slicer.app.processEvents()
-                  current_time = time.time()
-                  gap=current_time-previous_time
-                  if gap>0.3:
-                    previous_time = current_time
-                    elapsed_time = current_time - start_time
-                    self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: {elapsed_time:.1f}s")
-            
-                start_time = time.time()
-                previous_time = start_time
-                self.ui.timeLabel.setText(f"Installation of librairies into the new environnement. This task may take a few minutes.\ntime: 0.0s")
-
-                name_env = "shapeaxi"
-                sys.path.append("../CrownSegmentation/CrownSegmentation_utils")
-            
-                # if result_pythonpath : 
-                conda_exe = self.conda.getCondaExecutable()
-                path_pip = self.conda.getCondaPath()+f"/envs/{name_env}/bin/pip"
-                # command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ALI_IOS_utils.requirement",path_pip] # THIS LINE IS WORKING
-                command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"CrownSegmentation_utils.install_pytorch",path_pip]
-                print("command : ",command)
-                
-                process = threading.Thread(target=self.conda.condaRunCommand, args=(command,)) # launch install_pythorch.py with the environnement ali_ios to install pytorch3d on it
-                process.start()
-                
-                while process.is_alive():
-                  slicer.app.processEvents()
-                  current_time = time.time()
-                  gap=current_time-previous_time
-                  if gap>0.3:
-                    previous_time = current_time
-                    elapsed_time = current_time - start_time
-                    self.ui.timeLabel.setText(f"Installation of librairies into the new environnement. This task may take a few minutes.\ntime: {elapsed_time:.1f}s")
-                
-                ready=True
-              else :
-                ready = False
-            else:
-              ready=True
-              print("shapeaxi already exists!")
-          name_env='shapeaxi'
-          
-          if ready : # if everything is ready launch dentalmodelseg on the environnement shapeaxi in wsl
-            name_env = "shapeaxi"
-            
-            sys.path.append("../ShapeClassificationcli")
-          
-            if 'Airway' in self.data_type.split(' '):
-              for self.task in ['binary', 'severity', 'regression']:
-                if not self.cancel :
-                  args = [self.input_dir, self.output, self.data_type, self.task, self.log_path]
-
-                  conda_exe = self.conda.getCondaExecutable()
-                  command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
-                  for arg in args :
-                        command.append("\""+arg+"\"")
-
-                  # running in // to not block Slicer
-                  self.process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
-
-                  self.process.start()
-                  self.onProcessStarted()
-                  self.ui.labelBar.setText(f'Loading {self.task} model...')
-
-                  self.ui.applyChangesButton.setEnabled(False)
-                  self.ui.doneLabel.setHidden(True)
-                  self.ui.timeLabel.setHidden(False)
-                  self.ui.progressLabel.setHidden(False)
-                  self.ui.progressBar.setHidden(False)
-                  start_time = time.time()
-                  previous_time = start_time
-                  while self.process.is_alive():
-                    slicer.app.processEvents()
-                    self.onProcessUpdate()
-                    current_time = time.time()
-                    gap=current_time-previous_time
-                    if gap>0.3:
-                      previous_time = current_time
-                      elapsed_time = current_time - start_time
-                      self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
-                  self.resetProgressBar()
-
-
-      ### TODO: Windows test and changes
+        self.conda = CondaSetUpCall()
       else:
         from CondaSetUp import CondaSetUpCallWsl
         print("windows!!")
-
         self.conda = CondaSetUpCallWsl()  
         wsl = self.conda.testWslAvailable()
         ready = True
@@ -488,125 +382,125 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
           text = "Code can't be launch. \nWSL is not installed, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading may be blocked by Chrome, this is normal, just authorize it."
           ready = False
           messageBox.information(None, "Information", text)
-        if ready : # checking if miniconda installed on wsl
-          self.ui.timeLabel.setText(f"Checking if miniconda is installed")
-          if "Error" in self.conda.condaRunCommand([self.conda.getCondaExecutable(),"--version"]): # if conda is setup
-              messageBox = qt.QMessageBox()
-              text = "Code can't be launch. \nConda is not setup in WSL. Please go the extension CondaSetUp in SlicerConda to do it."
-              ready = False
-              messageBox.information(None, "Information", text)       
+      
+      # -------------------------------- check Miniconda installation -----------------
 
-        if ready : # checking if environment 'shapeaxi' exist on wsl and if no ask user permission to create and install required lib in it
-          self.ui.timeLabel.setText(f"Checking if environnement exist")
-          if not self.conda.condaTestEnv('shapeaxi') : # check is environnement exist, if not ask user the permission to do it
-            userResponse = slicer.util.confirmYesNoDisplay("The environnement to run the classification doesn't exist, do you want to create it ? ", windowTitle="Env doesn't exist")
-            if userResponse :
-              start_time = time.time()
-              previous_time = start_time
-              self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: 0.0s")
-              name_env = "shapeaxi"
-              process = threading.Thread(target=self.conda.condaCreateEnv, args=(name_env,"3.9",["shapeaxi"],)) #run in paralle to not block slicer
-              process.start()
-              
-              while process.is_alive():
-                slicer.app.processEvents()
-                current_time = time.time()
-                gap=current_time-previous_time
-                if gap>0.3:
-                  previous_time = current_time
-                  elapsed_time = current_time - start_time
-                  self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: {elapsed_time:.1f}s")
-          
-              start_time = time.time()
-              previous_time = start_time
-              self.ui.timeLabel.setText(f"Installation of librairies into the new environnement. This task may take a few minutes.\ntime: 0.0s")
+      if ready : # checking if miniconda installed
+        self.ui.timeLabel.setText(f"Checking if miniconda is installed")
+        if "Error" in self.conda.condaRunCommand([self.conda.getCondaExecutable(),"--version"]): # if conda is setup
+          messageBox = qt.QMessageBox()
+          text = "Code can't be launch. \nConda is not setup. Please go the extension CondaSetUp in SlicerConda to do it."
+          ready = False
+          messageBox.information(None, "Information", text)
 
-              name_env = "shapeaxi"
+      # ------------------------------ check if ShapeAXI exist in environment 
+
+
+      if ready : # checking if environment 'shapeaxi' exist and if no ask user permission to create and install required lib in it
+        self.ui.timeLabel.setText(f"Checking if environnement exist")
+        if not self.conda.condaTestEnv('shapeaxi') : # check is environnement exist, if not ask user the permission to do it
+          userResponse = slicer.util.confirmYesNoDisplay("The environnement to run the classification doesn't exist, do you want to create it ? ", windowTitle="Env doesn't exist")
+          if userResponse :
+            start_time = time.time()
+            previous_time = start_time
+            self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: 0.0s")
+            name_env = "shapeaxi"
+            process = threading.Thread(target=self.conda.condaCreateEnv, args=(name_env,"3.9",["shapeaxi"],)) #run in paralle to not block slicer
+            process.start()
+            
+            while process.is_alive():
+              slicer.app.processEvents()
+              current_time = time.time()
+              gap=current_time-previous_time
+              if gap>0.3:
+                previous_time = current_time
+                elapsed_time = current_time - start_time
+                self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: {elapsed_time:.1f}s")
+        
+            start_time = time.time()
+            previous_time = start_time
+            self.ui.timeLabel.setText(f"Installation of librairies into the new environnement. This task may take a few minutes.\ntime: 0.0s")
+            name_env = "shapeaxi"
+            # ------------ installation of pytorch3d - differents but can be one way I think
+            if platform.system() == "Windows": 
+              print("installation of pytorch in windows")
+              # sys.path.append("..\\CrownSegmentation\\CrownSegmentation_utils")
+
               result_pythonpath = self.check_pythonpath_windows(name_env,"CrownSegmentation_utils.install_pytorch")
               if not result_pythonpath : 
                 self.give_pythonpath_windows(name_env)
-                # result_pythonpath = self.check_pythonpath_windows(name_env,"ALI_IOS_utils.requirement") # THIS LINE IS WORKING
                 result_pythonpath = self.check_pythonpath_windows(name_env,"CrownSegmentation_utils.install_pytorch")
                 
               if result_pythonpath : 
                 conda_exe = self.conda.getCondaExecutable()
                 path_pip = self.conda.getCondaPath()+f"/envs/{name_env}/bin/pip"
-                # command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ALI_IOS_utils.requirement",path_pip] # THIS LINE IS WORKING
-                command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"../CrowmSegmentation/CrownSegmentation_utils.install_pytorch",path_pip]
-                print("command : ",command)
-              
-                process = threading.Thread(target=self.conda.condaRunCommand, args=(command,)) # launch install_pythorch.py with the environnement ali_ios to install pytorch3d on it
-                process.start()
-              
-              while process.is_alive():
-                slicer.app.processEvents()
-                current_time = time.time()
-                gap=current_time-previous_time
-                if gap>0.3:
-                  previous_time = current_time
-                  elapsed_time = current_time - start_time
-                  self.ui.timeLabel.setText(f"Installation of librairies into the new environnement. This task may take a few minutes.\ntime: {elapsed_time:.1f}s")
-              
-              ready=True
-            else :
-              ready = False
-          else:
-            print("shapeaxi already exists!")
-        if ready : # if everything is ready launch dentalmodelseg on the environnement shapeaxi in wsl
-          name_env = "shapeaxi"
+                command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"CrownSegmentation_utils.install_pytorch",path_pip]
+                print("command : ",command)				
+            else: ## I think the ../../CrownSegmentation_utils should wotk also on windows because executed by wsl in anycase
+              print("installation of pytorch on linux system")
+              sys.path.append("../CrownSegmentation/CrownSegmentation_utils")
+          
+              conda_exe = self.conda.getCondaExecutable()
+              path_pip = self.conda.getCondaPath()+f"/envs/{name_env}/bin/pip"
+              command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"CrownSegmentation_utils.install_pytorch",path_pip]
 
+              # ----- then run command and update process in UI
+              # results = self.conda.condaRunCommand(command)
+              # print(results)
+            process = threading.Thread(target=self.conda.condaRunCommand, args=(command,)) # launch install_pythorch.py with the environnement ali_ios to install pytorch3d on it
+            process.start()
+            
+            ## create an update_timeLabelText function with text to display as input parameter
+            while process.is_alive():
+              slicer.app.processEvents()
+              current_time = time.time()
+              gap=current_time-previous_time
+              if gap>0.3:
+                previous_time = current_time
+                elapsed_time = current_time - start_time
+                self.ui.timeLabel.setText(f"Installation of pytorch into the new environnement. This task may take a few minutes.\ntime: {elapsed_time:.1f}s")							
+            ready=True
+          else :
+            ready = False
+      else:
+        ready=True
+        print("shapeaxi already exists!")
+      name_env='shapeaxi'
+
+      #################### DONE shape axi installation
+
+      # ------------------------------ Access cli in environment 
+          
+      if ready : # if everything is ready launch script on the environnement shapeaxi
+        name_env = "shapeaxi"
+
+        #### here differents path but should be able to specify the same way for linux and windows
+        if platform.system() == "Windows": 
+          print("import cli in windows")
           result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
           if not result_pythonpath : 
             self.give_pythonpath_windows(name_env)
             result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
-          
-          if 'Airway' in self.data_type.split(' '):
-            for self.task in ['binary', 'severity', 'regression']:
-              if not self.cancel :
-                args = [self.input_dir, self.output, self.data_type, self.task, self.log_path]
+        else: 
+          print("import cli in linux")
+          sys.path.append("../ShapeClassificationcli")
+      
 
-                conda_exe = self.conda.getCondaExecutable()
-                command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
-                for arg in args :
-                      command.append("\""+arg+"\"")
+        # ------------------------------ Create args list and send command to cli script 
 
-                # running in // to not block Slicer
-                self.process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
+        if 'Airway' in self.data_type.split(' '):
+          for self.task in ['binary']:
+            if not self.cancel :
+              args = [self.input_dir, self.output, self.data_type, self.task, self.log_path]
 
-                self.process.start()
-                self.onProcessStarted()
-                self.ui.labelBar.setText(f'Loading {self.task} model...')
-
-                self.ui.applyChangesButton.setEnabled(False)
-                self.ui.doneLabel.setHidden(True)
-                self.ui.timeLabel.setHidden(False)
-                self.ui.progressLabel.setHidden(False)
-                self.ui.progressBar.setHidden(False)
-                start_time = time.time()
-                previous_time = start_time
-                while self.process.is_alive():
-                  slicer.app.processEvents()
-                  self.onProcessUpdate()
-                  current_time = time.time()
-                  gap=current_time-previous_time
-                  if gap>0.3:
-                    previous_time = current_time
-                    elapsed_time = current_time - start_time
-                    self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
-                self.resetProgressBar()
-              
-          else:
-              self.task = 'severity'
-              args = [self.input_dir, self.output, self.data_type, self.task]
               conda_exe = self.conda.getCondaExecutable()
               command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
               for arg in args :
                     command.append("\""+arg+"\"")
-              print("The following command will be executed:\n",command)
-
 
               # running in // to not block Slicer
               self.process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
+
               self.process.start()
               self.onProcessStarted()
               self.ui.labelBar.setText(f'Loading {self.task} model...')
@@ -615,7 +509,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
               self.ui.doneLabel.setHidden(True)
               self.ui.timeLabel.setHidden(False)
               self.ui.progressLabel.setHidden(False)
-              self.ui.timeLabel.setText(f"time : 0.00s")
+              self.ui.progressBar.setHidden(False)
               start_time = time.time()
               previous_time = start_time
               while self.process.is_alive():
@@ -627,6 +521,41 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                   previous_time = current_time
                   elapsed_time = current_time - start_time
                   self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
+              self.resetProgressBar()
+          self.onProcessCompleted()
+
+        else:
+            self.task = 'severity'
+            args = [self.input_dir, self.output, self.data_type, self.task]
+            conda_exe = self.conda.getCondaExecutable()
+            command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
+            for arg in args :
+                  command.append("\""+arg+"\"")
+            print("The following command will be executed:\n",command)
+
+
+            # running in // to not block Slicer
+            self.process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
+            self.process.start()
+            self.onProcessStarted()
+            self.ui.labelBar.setText(f'Loading {self.task} model...')
+
+            self.ui.applyChangesButton.setEnabled(False)
+            self.ui.doneLabel.setHidden(True)
+            self.ui.timeLabel.setHidden(False)
+            self.ui.progressLabel.setHidden(False)
+            self.ui.timeLabel.setText(f"time : 0.00s")
+            start_time = time.time()
+            previous_time = start_time
+            while self.process.is_alive():
+              slicer.app.processEvents()
+              self.onProcessUpdate()
+              current_time = time.time()
+              gap=current_time-previous_time
+              if gap>0.3:
+                previous_time = current_time
+                elapsed_time = current_time - start_time
+                self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
               self.onProcessCompleted()
             
       self.ui.applyChangesButton.setEnabled(True)
