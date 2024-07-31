@@ -398,13 +398,13 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
       if ready : # checking if environment 'shapeaxi' exist and if no ask user permission to create and install required lib in it
         self.ui.timeLabel.setText(f"Checking if environnement exist")
-        if not self.conda.condaTestEnv('shapeaxi') : # check is environnement exist, if not ask user the permission to do it
+        name_env = 'shapeaxi'
+        if not self.conda.condaTestEnv(name_env) : # check is environnement exist, if not ask user the permission to do it
           userResponse = slicer.util.confirmYesNoDisplay("The environnement to run the classification doesn't exist, do you want to create it ? ", windowTitle="Env doesn't exist")
           if userResponse :
             start_time = time.time()
             previous_time = start_time
             self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: 0.0s")
-            name_env = "shapeaxi"
             process = threading.Thread(target=self.conda.condaCreateEnv, args=(name_env,"3.9",["shapeaxi"],)) #run in paralle to not block slicer
             process.start()
             
@@ -420,33 +420,19 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             start_time = time.time()
             previous_time = start_time
             self.ui.timeLabel.setText(f"Installation of librairies into the new environnement. This task may take a few minutes.\ntime: 0.0s")
-            name_env = "shapeaxi"
-            # ------------ installation of pytorch3d - differents but can be one way I think
-            if platform.system() == "Windows": 
-              print("installation of pytorch in windows")
-              # sys.path.append("..\\CrownSegmentation\\CrownSegmentation_utils")
+            # ------------ installation of pytorch3d -------- 
 
-              result_pythonpath = self.check_pythonpath_windows(name_env,"CrownSegmentation_utils.install_pytorch")
-              if not result_pythonpath : 
-                self.give_pythonpath_windows(name_env)
-                result_pythonpath = self.check_pythonpath_windows(name_env,"CrownSegmentation_utils.install_pytorch")
-                
-              if result_pythonpath : 
-                conda_exe = self.conda.getCondaExecutable()
-                path_pip = self.conda.getCondaPath()+f"/envs/{name_env}/bin/pip"
-                command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"CrownSegmentation_utils.install_pytorch",path_pip]
-                print("command : ",command)				
-            else: ## I think the ../../CrownSegmentation_utils should wotk also on windows because executed by wsl in anycase
-              print("installation of pytorch on linux system")
-              sys.path.append("../CrownSegmentation/CrownSegmentation_utils")
-          
+            result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassification_utils.install_pytorch") ## return True 
+            if not result_pythonpath :
+              self.give_pythonpath_windows(name_env)
+              result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassification_utils.install_pytorch")
+              
+            if result_pythonpath : 
               conda_exe = self.conda.getCondaExecutable()
               path_pip = self.conda.getCondaPath()+f"/envs/{name_env}/bin/pip"
-              command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"CrownSegmentation_utils.install_pytorch",path_pip]
+              command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassification_utils.install_pytorch",path_pip]
+              print("command : ",command)				
 
-              # ----- then run command and update process in UI
-              # results = self.conda.condaRunCommand(command)
-              # print(results)
             process = threading.Thread(target=self.conda.condaRunCommand, args=(command,)) # launch install_pythorch.py with the environnement ali_ios to install pytorch3d on it
             process.start()
             
@@ -465,27 +451,17 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
       else:
         ready=True
         print("shapeaxi already exists!")
-      name_env='shapeaxi'
 
       #################### DONE shape axi installation
 
       # ------------------------------ Access cli in environment 
           
       if ready : # if everything is ready launch script on the environnement shapeaxi
-        name_env = "shapeaxi"
-
-        #### here differents path but should be able to specify the same way for linux and windows
-        if platform.system() == "Windows": 
-          print("import cli in windows")
+        result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
+        if not result_pythonpath : 
+          self.give_pythonpath_windows(name_env)
           result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
-          if not result_pythonpath : 
-            self.give_pythonpath_windows(name_env)
-            result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
-        else: 
-          print("import cli in linux")
-          sys.path.append("../ShapeClassificationcli")
       
-
         # ------------------------------ Create args list and send command to cli script 
 
         if 'Airway' in self.data_type.split(' '):
@@ -556,10 +532,11 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                 previous_time = current_time
                 elapsed_time = current_time - start_time
                 self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
-              self.onProcessCompleted()
+            self.onProcessCompleted()
             
       self.ui.applyChangesButton.setEnabled(True)
       self.ui.cancelButton.setHidden(True)
+
 
   def resetProgressBar(self):
     self.ui.progressBar.setValue(0)
