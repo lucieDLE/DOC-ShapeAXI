@@ -85,6 +85,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.outputFolder = ""
     self.mount_point = ""
     self.data_type = ""
+    self.all_installed = False
 
     self.log_path = os.path.normpath(os.path.join(slicer.util.tempDirectory(), 'process.log'))
     self.time_log = 0 # for progress bar
@@ -457,9 +458,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
           elapsed_time = current_time - start_time
           self.ui.timeLabel.setText(f"Installation of pytorch into the new environnement. This task may take a few minutes.\ntime: {elapsed_time:.1f}s")
 
-
-    return True
-
+    self.all_installed = True
 
   def onApplyChangesButton(self):
     '''
@@ -475,7 +474,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
     self.ui.applyChangesButton.setEnabled(False)
   
-    if self.check_input_parameters() and self.check_requirements() :
+    if self.check_input_parameters() and self.all_installed :
 
       self.ui.timeLabel.setHidden(False)
       slicer.app.processEvents()
@@ -714,9 +713,65 @@ class ShapeClassificationLogic(ScriptedLoadableModuleLogic):
     parameters ["input_dir"] = self.input_dir
     parameters ["output_dir"] = self.output_dir
     parameters ['data_type'] = self.data_type
-    # parameters ['task'] = self.task
-    parameters['log_path'] = self.log_path
+    parameters ['log_path'] = self.log_path
 
-    shapeaxi_process = slicer.modules.shapeclassificationcli
-    self.cliNode = slicer.cli.run(shapeaxi_process,None, parameters)  
-    return shapeaxi_process
+    if 'Airway' in self.data_type.split(' '):
+      for self.task in ['severity', 'binary', 'regression']:
+        self.nn_type = self.find_nn_type()
+        self.model, self.num_classes = self.find_model_name()
+
+        parameters ['task'] = self.task
+        parameters ['model'] = self.model
+        parameters ['nn_type'] = self.nn_type
+        parameters ['num_classes'] = self.num_classes
+
+        shapeaxi_process = slicer.modules.shapeclassificationcli
+        self.cliNode = slicer.cli.run(shapeaxi_process,None, parameters)  
+        return shapeaxi_process
+      
+    else:
+      self.task = 'severity'
+      self.nn_type = self.find_nn_type()
+      self.model, self.num_classes = self.find_model_name()
+
+      parameters ['task'] = self.task
+      parameters ['model'] = self.model
+      parameters ['nn_type'] = self.nn_type
+      parameters ['num_classes'] = self.num_classes
+
+      shapeaxi_process = slicer.modules.shapeclassificationcli
+      self.cliNode = slicer.cli.run(shapeaxi_process,None, parameters)  
+      return shapeaxi_process
+  
+  def find_nn_type(self):
+    if self.task == 'regression':
+      return 'SaxiMHAFBRegression'
+    else:
+      return 'SaxiMHAFBClassification'
+
+  def find_model_name(self):
+    num_classes = 4
+    if 'Condyle' in self.data_type.split(' '):
+      model_name='condyles_4_class'
+
+    elif 'Airway' in self.data_type.split(' '):
+      if self.task == 'binary':
+        model_name='airways_2_class'
+        self.num_classes = 2
+
+      elif self.task == 'severity':
+        model_name='airways_4_class'
+
+      elif self.task == 'regression':
+        model_name='airways_4_regress'
+        self.num_classes = 1
+      else:
+        print("no model found for undefined task")
+
+    elif 'Cleft' in self.data_type.split(' '):
+      model_name='clefts_4_class'
+
+    else:
+      print("No model found")
+      return None, None
+    return model_name, num_classes

@@ -67,40 +67,40 @@ class SelfAttention(nn.Module):
         return x
 
 
-def find_best_model(datatype):
+# def find_best_model(datatype):
    
-  if 'Condyle' in datatype.split(' '):
-    model_name='condyles_4_class'
-    nn = 'SaxiMHAFBClassification'
-    args.num_classes = 4
+#   if 'Condyle' in datatype.split(' '):
+#     model_name='condyles_4_class'
+#     nn = 'SaxiMHAFBClassification'
+#     args.num_classes = 4
 
-  elif 'Airway' in datatype.split(' '):
-    if args.task == 'binary':
-      model_name='airways_2_class'
-      nn = 'SaxiMHAFBClassification'
-      args.num_classes = 2
+#   elif 'Airway' in datatype.split(' '):
+#     if args.task == 'binary':
+#       model_name='airways_2_class'
+#       nn = 'SaxiMHAFBClassification'
+#       args.num_classes = 2
 
-    elif args.task == 'severity':
-      model_name='airways_4_class'
-      nn = 'SaxiMHAFBClassification'
-      args.num_classes = 4
+#     elif args.task == 'severity':
+#       model_name='airways_4_class'
+#       nn = 'SaxiMHAFBClassification'
+#       args.num_classes = 4
 
-    elif args.task == 'regression':
-      model_name='airways_4_regress'
-      nn = 'SaxiMHAFBRegression'
-      args.num_classes = 1
-    else:
-       print("no model found for undefined task")
+#     elif args.task == 'regression':
+#       model_name='airways_4_regress'
+#       nn = 'SaxiMHAFBRegression'
+#       args.num_classes = 1
+#     else:
+#        print("no model found for undefined task")
 
-  elif 'Cleft' in datatype.split(' '):
-    model_name='clefts_4_class'
-    nn = 'SaxiMHAFBClassification'
-    args.num_classes = 4
+#   elif 'Cleft' in datatype.split(' '):
+#     model_name='clefts_4_class'
+#     nn = 'SaxiMHAFBClassification'
+#     args.num_classes = 4
 
-  else:
-    print("No model found")
-    return None, None
-  return model_name, nn
+#   else:
+#     print("No model found")
+#     return None, None
+#   return model_name, nn
 
 def csv_edit(args):
     """
@@ -277,7 +277,7 @@ def main(args):
 
   args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-  model_name, args.nn = find_best_model(args.data_type)
+  # model_name, args.nn = find_best_model(args.data_type)
   # convert path if windows distribution
   args.input_csv = linux2windows_path(os.path.join(args.output_dir, f"files_{args.data_type}.csv"))
   args.input_dir = linux2windows_path(args.input_dir)
@@ -289,11 +289,11 @@ def main(args):
     log_f.truncate(0)
   
 
-  out_model_path = os.path.join(args.output_dir, model_name + '.ckpt')
+  out_model_path = os.path.join(args.output_dir, args.model_name + '.ckpt')
   if os.path.exists(args.output_dir):
     if not os.path.exists(out_model_path):
       print("Downloading model...")
-      download_model(model_name, out_model_path)
+      download_model(args.model_name, out_model_path)
 
   if not os.path.exists(args.input_csv):
     create_csv(args.input_csv)
@@ -313,19 +313,23 @@ if __name__ == '__main__':
   parser.add_argument('input_dir',type = str)
   parser.add_argument('output_dir',type=str)
   parser.add_argument('data_type',type = str)
+  parser.add_argument('task', type=str)
+  parser.add_argument('model',type=str)
+  parser.add_argument('nn_type',type=str)
+  parser.add_argument('num_classes',type=str)
   parser.add_argument('log_path',type=str)
 
   args = parser.parse_args()
 
-  if  'Airway' in args.data_type.split(' '):
-    tasks = ['severity', 'binary', 'regression']
-    for task in tasks:
-      args.task = task
-      main(args)
+  # if  'Airway' in args.data_type.split(' '):
+  #   tasks = ['severity', 'binary', 'regression']
+  #   for task in tasks:
+  #     args.task = task
+  #     main(args)
 
-  else:
-    args.task = 'severity'
-    main(args)
+  # else:
+  #   args.task = 'severity'
+  #   main(args)
 
   with open(args.log_path,'w+') as log_f :
     log_f.write(f"Complete,NaN,NaN,NaN")
