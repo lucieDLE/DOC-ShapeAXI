@@ -7,6 +7,7 @@ import platform
 import sys
 import time
 import threading
+import pkg_resources
 
 sys.path.append('../../../ShapeAXI/')
 
@@ -120,6 +121,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
     # UI elements 
 
+    self.ui.checkDependenciesButton.connect('clicked(bool)', self.onCheckRequirements)
     self.ui.browseDirectoryButton.connect('clicked(bool)',self.onBrowseOutputButton)
     self.ui.browseMountPointButton.connect('clicked(bool)',self.onBrowseMountPointButton)
     self.ui.cancelButton.connect('clicked(bool)', self.onCancel)
@@ -277,6 +279,13 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
   ##  Process
   ##
 
+  def is_package_installed(self, package):
+    try:
+      pkg_resources.get_distribution(package)
+      return True
+    except pkg_resources.DistributionNotFound:
+      return False
+
 
   
   def check_pythonpath_windows(self,name_env,file):
@@ -308,6 +317,150 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
       print("output GIVE python path: ", results)
 
 
+  def check_input_parameters(self):
+    msg = qt.QMessageBox()
+    if not(os.path.isdir(self.output)):
+      if not(os.path.isdir(self.output)):
+        msg.setText("Output directory : \nIncorrect path.")
+        print('Error: Incorrect path for output directory.')
+        self.ui.outputLineEdit.setText('')
+        print(f'output folder : {self.output}')
+      else:
+        msg.setText('Unknown error.')
+
+      msg.setWindowTitle("Error")
+      msg.exec_()
+      return False
+
+    elif not(os.path.isdir(self.input_dir)):
+      msg.setText("input file : \nIncorrect path.")
+      print('Error: Incorrect path for input directory.')
+      self.ui.mountPointLineEdit.setText('')
+
+      msg.setWindowTitle("Error")
+      msg.exec_()
+      return False
+    else:
+      return True
+
+
+  def onCheckRequirements(self):
+
+    link = 'https://github.com/DCBIA-OrthoLab/SlicerConda'
+    ready = True
+    # if not CondaSetUp
+    if not self.is_package_installed('CondaSetUp'):
+      self.ui.timeLabel.setText(f"Checking if SlicerConda is installed")
+      messageBox = qt.QMessageBox()
+      text = "SlicerConda is not set up, please click <a href=\"https://github.com/DCBIA-OrthoLab/SlicerConda/\">here</a> for installation."
+      messageBox.information(None, "Information", text)
+      return False
+
+    ## wsl
+    if platform.system() == "Windows":
+      from CondaSetUp import CondaSetUpCallWsl
+      print("windows!!")
+      self.conda = CondaSetUpCallWsl()  
+      wsl = self.conda.testWslAvailable()
+
+      self.ui.timeLabel.setHidden(False)
+      self.ui.timeLabel.setText(f"Checking if wsl is installed, this task may take a moments")
+      # slicer.app.processEvents()
+
+      if wsl : # if wsl is install
+        self.ui.timeLabel.setText("WSL installed")
+        lib = self.check_lib_wsl()
+        if not lib : # if lib required are not install
+          self.ui.timeLabel.setText(f"Checking if the required librairies are installed, this task may take a moments")
+          messageBox = qt.QMessageBox()
+          text = "Code can't be launch. \nWSL doen't have all the necessary libraries, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading may be blocked by Chrome, this is normal, just authorize it."
+          # text = "WSL doen't have all the necessary libraries, please download the installer and follow the instructions <a href=\"https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading\">here</a> for installation. The link may be blocked by Chrome, just authorize it."
+
+          messageBox.information(None, "Information", text)
+          return False
+      else : # if wsl not install, ask user to install it ans stop process
+        messageBox = qt.QMessageBox()
+        text = "Code can't be launch. \nWSL is not installed, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading may be blocked by Chrome, this is normal, just authorize it."
+        # text = "WSL is not installed, please download the installer and follow the instructions <a href=\"https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading\">here</a> for installation. The link may be blocked by Chrome, just authorize it."
+
+        messageBox.information(None, "Information", text)
+        return False
+    
+    else: 
+      from CondaSetUp import CondaSetUpCall
+      self.conda = CondaSetUpCall()
+
+    ## MiniConda
+
+    self.ui.timeLabel.setText(f"Checking if miniconda is installed")
+    if "Error" in self.conda.condaRunCommand([self.conda.getCondaExecutable(),"--version"]): # if conda is setup
+      messageBox = qt.QMessageBox()
+      text = "Code can't be launch. \nConda is not setup. Please go the extension CondaSetUp in SlicerConda to do it."
+      messageBox.information(None, "Information", text)
+      return False
+
+    ## shapeAXI
+
+    self.ui.timeLabel.setText(f"Checking if environnement exist")
+    name_env = 'shapeaxi'
+    if not self.conda.condaTestEnv(name_env) : # check is environnement exist, if not ask user the permission to do it
+      userResponse = slicer.util.confirmYesNoDisplay("The environnement to run the classification doesn't exist, do you want to create it ? ", windowTitle="Env doesn't exist")
+      if userResponse :
+        start_time = time.time()
+        previous_time = start_time
+        self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: 0.0s")
+        process = threading.Thread(target=self.conda.condaCreateEnv, args=(name_env,"3.9",["shapeaxi"],)) #run in parallel to not block slicer
+        process.start()
+        
+        while process.is_alive():
+          slicer.app.processEvents()
+          current_time = time.time()
+          gap=current_time-previous_time
+          if gap>0.3:
+            previous_time = current_time
+            elapsed_time = current_time - start_time
+            self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: {elapsed_time:.1f}s")
+    
+        start_time = time.time()
+        previous_time = start_time
+        self.ui.timeLabel.setText(f"Installation of librairies into the new environnement. This task may take a few minutes.\ntime: 0.0s")
+      else:
+        return False
+    
+    ## pytorch3d
+
+    conda_exe = self.conda.getCondaExecutable()
+    command = [conda_exe, "run", "-n", name_env, "python" ,"-c", f"\"import pytorch3d;import pytorch3d.renderer\""]
+    result = self.conda.condaRunCommand(command)
+    
+    if "Error" in result : # pytorch3d not installed or badly installed 
+
+      result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassification_utils.install_pytorch") ## return True 
+      if not result_pythonpath :
+        self.give_pythonpath_windows(name_env)
+        result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassification_utils.install_pytorch")
+        
+      if result_pythonpath : 
+        conda_exe = self.conda.getCondaExecutable()
+        path_pip = self.conda.getCondaPath()+f"/envs/{name_env}/bin/pip"
+        command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassification_utils.install_pytorch",path_pip]
+
+      process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
+      process.start()
+    
+      while process.is_alive():
+        slicer.app.processEvents()
+        current_time = time.time()
+        gap=current_time-previous_time
+        if gap>0.3:
+          previous_time = current_time
+          elapsed_time = current_time - start_time
+          self.ui.timeLabel.setText(f"Installation of pytorch into the new environnement. This task may take a few minutes.\ntime: {elapsed_time:.1f}s")
+
+
+    return True
+
+
   def onApplyChangesButton(self):
     '''
     This function is called when the user want to run dentalmodelseg
@@ -321,136 +474,18 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     '''
 
     self.ui.applyChangesButton.setEnabled(False)
+  
+    if self.check_input_parameters() and self.check_requirements() :
 
-    msg = qt.QMessageBox()
-    if not(os.path.isdir(self.output)):
-      if not(os.path.isdir(self.output)):
-        msg.setText("Output directory : \nIncorrect path.")
-        print('Error: Incorrect path for output directory.')
-        self.ui.outputLineEdit.setText('')
-        print(f'output folder : {self.output}')
-      else:
-        msg.setText('Unknown error.')
-
-      msg.setWindowTitle("Error")
-      msg.exec_()
-      return
-
-    elif not(os.path.isdir(self.input_dir)):
-      msg.setText("input file : \nIncorrect path.")
-      print('Error: Incorrect path for input directory.')
-      self.ui.mountPointLineEdit.setText('')
-
-      msg.setWindowTitle("Error")
-      msg.exec_()
-      return
-
-    else:
-      # -------------------------------- STARTING ENV SET UP:  -----------------
-
-      self.ui.timeLabel.setHidden(False)
-      ready = True
       self.ui.timeLabel.setHidden(False)
       slicer.app.processEvents()
-      
-      # -------------------------------- import SlicerConda envs + check wsl if windows:  -----------------
-      if platform.system() != "Windows" : #if linux system
-        from CondaSetUp import CondaSetUpCall
-        print("Linux")
-        self.conda = CondaSetUpCall()
-      else:
-        from CondaSetUp import CondaSetUpCallWsl
-        print("windows!!")
-        self.conda = CondaSetUpCallWsl()  
-        wsl = self.conda.testWslAvailable()
-        ready = True
-        self.ui.timeLabel.setHidden(False)
-        self.ui.timeLabel.setText(f"Checking if wsl is installed, this task may take a moments")
-        slicer.app.processEvents()
 
-        if wsl : # if wsl is install
-          self.ui.timeLabel.setText("WSL installed")
-          lib = self.check_lib_wsl()
-          if not lib : # if lib required are not install
-            self.ui.timeLabel.setText(f"Checking if the required librairies are installed, this task may take a moments")
-            messageBox = qt.QMessageBox()
-            text = "Code can't be launch. \nWSL doen't have all the necessary libraries, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading may be blocked by Chrome, this is normal, just authorize it."
-            ready = False
-            messageBox.information(None, "Information", text)
-        else : # if wsl not install, ask user to install it ans stop process
-          messageBox = qt.QMessageBox()
-          text = "Code can't be launch. \nWSL is not installed, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading may be blocked by Chrome, this is normal, just authorize it."
-          ready = False
-          messageBox.information(None, "Information", text)
-      
-      if ready : # checking if miniconda installed
-        self.ui.timeLabel.setText(f"Checking if miniconda is installed")
-        if "Error" in self.conda.condaRunCommand([self.conda.getCondaExecutable(),"--version"]): # if conda is setup
-          messageBox = qt.QMessageBox()
-          text = "Code can't be launch. \nConda is not setup. Please go the extension CondaSetUp in SlicerConda to do it."
-          ready = False
-          messageBox.information(None, "Information", text)
-
-      if ready : # checking if environment 'shapeaxi' exist and if no ask user permission to create and install required lib in it
-        self.ui.timeLabel.setText(f"Checking if environnement exist")
-        name_env = 'shapeaxi'
-        if not self.conda.condaTestEnv(name_env) : # check is environnement exist, if not ask user the permission to do it
-          userResponse = slicer.util.confirmYesNoDisplay("The environnement to run the classification doesn't exist, do you want to create it ? ", windowTitle="Env doesn't exist")
-          if userResponse :
-            start_time = time.time()
-            previous_time = start_time
-            self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: 0.0s")
-            process = threading.Thread(target=self.conda.condaCreateEnv, args=(name_env,"3.9",["shapeaxi"],)) #run in paralle to not block slicer
-            process.start()
-            
-            while process.is_alive():
-              slicer.app.processEvents()
-              current_time = time.time()
-              gap=current_time-previous_time
-              if gap>0.3:
-                previous_time = current_time
-                elapsed_time = current_time - start_time
-                self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: {elapsed_time:.1f}s")
-        
-            start_time = time.time()
-            previous_time = start_time
-            self.ui.timeLabel.setText(f"Installation of librairies into the new environnement. This task may take a few minutes.\ntime: 0.0s")
-
-            result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassification_utils.install_pytorch") ## return True 
-            if not result_pythonpath :
-              self.give_pythonpath_windows(name_env)
-              result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassification_utils.install_pytorch")
-              
-            if result_pythonpath : 
-              conda_exe = self.conda.getCondaExecutable()
-              path_pip = self.conda.getCondaPath()+f"/envs/{name_env}/bin/pip"
-              command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassification_utils.install_pytorch",path_pip]
-              print("command : ",command)				
-
-            process = threading.Thread(target=self.conda.condaRunCommand, args=(command,)) # launch install_pythorch.py with the environnement ali_ios to install pytorch3d on it
-            process.start()
-            
-            ## create an update_timeLabelText function with text to display as input parameter
-            while process.is_alive():
-              slicer.app.processEvents()
-              current_time = time.time()
-              gap=current_time-previous_time
-              if gap>0.3:
-                previous_time = current_time
-                elapsed_time = current_time - start_time
-                self.ui.timeLabel.setText(f"Installation of pytorch into the new environnement. This task may take a few minutes.\ntime: {elapsed_time:.1f}s")							
-            ready=True
-          else :
-            ready = False
-      else:
-        ready=True
-        print("shapeaxi already exists!")
-          
-      if ready : # if everything is ready launch script on the environnement shapeaxi
+      name_env = 'shapeaxi'
+         
+      result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
+      if not result_pythonpath : 
+        self.give_pythonpath_windows(name_env)
         result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
-        if not result_pythonpath : 
-          self.give_pythonpath_windows(name_env)
-          result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
       
       args = [self.input_dir, self.output, self.data_type, self.log_path]
 
