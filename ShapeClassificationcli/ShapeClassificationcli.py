@@ -289,11 +289,11 @@ def main(args):
     log_f.truncate(0)
   
 
-  out_model_path = os.path.join(args.output_dir, args.model_name + '.ckpt')
+  out_model_path = os.path.join(args.output_dir, args.model + '.ckpt')
   if os.path.exists(args.output_dir):
     if not os.path.exists(out_model_path):
       print("Downloading model...")
-      download_model(args.model_name, out_model_path)
+      download_model(args.model, out_model_path)
 
   if not os.path.exists(args.input_csv):
     create_csv(args.input_csv)
@@ -315,8 +315,8 @@ if __name__ == '__main__':
   parser.add_argument('data_type',type = str)
   parser.add_argument('task', type=str)
   parser.add_argument('model',type=str)
-  parser.add_argument('nn_type',type=str)
-  parser.add_argument('num_classes',type=str)
+  parser.add_argument('nn',type=str)
+  parser.add_argument('num_classes',type=int)
   parser.add_argument('log_path',type=str)
 
   args = parser.parse_args()
@@ -329,7 +329,7 @@ if __name__ == '__main__':
 
   # else:
   #   args.task = 'severity'
-  #   main(args)
+  main(args)
 
-  with open(args.log_path,'w+') as log_f :
+  with open(linux2windows_path(args.log_path),'w+') as log_f :
     log_f.write(f"Complete,NaN,NaN,NaN")
