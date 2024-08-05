@@ -76,7 +76,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     ScriptedLoadableModuleWidget.__init__(self, parent)
     VTKObservationMixin.__init__(self)  # needed for parameter node observation
 
-    self.logic = None
+    # self.logic = None
     self._parameterNode = None
     self._parameterNodeGuiTag = None
     self._updatingGUIFromParameterNode = False
@@ -155,6 +155,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.installCliNode = None
     self.progress = 0
     self.cancel = False
+    self.all_installed = True
 
     self.ui.timeLabel.setVisible(False)
     self.ui.labelBar.setVisible(False)
@@ -280,12 +281,12 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
   ##  Process
   ##
 
-  def is_package_installed(self, package):
-    try:
-      pkg_resources.get_distribution(package)
-      return True
-    except pkg_resources.DistributionNotFound:
-      return False
+  # def is_package_installed(self, package):
+  #   try:
+  #     pkg_resources.get_distribution(package)
+  #     return True
+  #   except pkg_resources.DistributionNotFound:
+  #     return False
 
 
   
@@ -345,12 +346,24 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
       return True
 
 
+  def init_conda(self):
+    if platform.system() == "Windows":
+      from CondaSetUp import CondaSetUpCallWsl
+      print("windows!!")
+      self.conda = CondaSetUpCallWsl()
+    else:
+      from CondaSetUp import CondaSetUpCall
+      self.conda = CondaSetUpCall() 
+
   def onCheckRequirements(self):
 
-    link = 'https://github.com/DCBIA-OrthoLab/SlicerConda'
-    ready = True
+    # link = 'https://github.com/DCBIA-OrthoLab/SlicerConda'
+    # ready = True
     # if not CondaSetUp
-    if not self.is_package_installed('CondaSetUp'):
+    # if not self.is_package_installed('CondaSetUp'):
+    try:
+      import CondaSetUp
+    except:
       self.ui.timeLabel.setText(f"Checking if SlicerConda is installed")
       messageBox = qt.QMessageBox()
       text = "SlicerConda is not set up, please click <a href=\"https://github.com/DCBIA-OrthoLab/SlicerConda/\">here</a> for installation."
@@ -402,7 +415,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
     ## shapeAXI
 
-    self.ui.timeLabel.setText(f"Checking if environnement exist")
+    self.ui.timeLabel.setText(f"Checking if environnement exists")
     name_env = 'shapeaxi'
     if not self.conda.condaTestEnv(name_env) : # check is environnement exist, if not ask user the permission to do it
       userResponse = slicer.util.confirmYesNoDisplay("The environnement to run the classification doesn't exist, do you want to create it ? ", windowTitle="Env doesn't exist")
@@ -427,14 +440,18 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         self.ui.timeLabel.setText(f"Installation of librairies into the new environnement. This task may take a few minutes.\ntime: 0.0s")
       else:
         return False
+    else:
+      self.ui.timeLabel.setText(f"Ennvironnement already exists")
     
     ## pytorch3d
 
     conda_exe = self.conda.getCondaExecutable()
+    self.ui.timeLabel.setText(f"Checking if pytorch3d is installed")
     command = [conda_exe, "run", "-n", name_env, "python" ,"-c", f"\"import pytorch3d;import pytorch3d.renderer\""]
     result = self.conda.condaRunCommand(command)
     
     if "Error" in result : # pytorch3d not installed or badly installed 
+      self.ui.timeLabel.setText(f"Installing pytorch3d")
 
       result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassification_utils.install_pytorch") ## return True 
       if not result_pythonpath :
@@ -457,6 +474,9 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
           previous_time = current_time
           elapsed_time = current_time - start_time
           self.ui.timeLabel.setText(f"Installation of pytorch into the new environnement. This task may take a few minutes.\ntime: {elapsed_time:.1f}s")
+    else:
+      self.ui.timeLabel.setText(f"pytorch3d is already installed")
+      print("pytorch3d already installed")
 
     self.all_installed = True
 
@@ -475,6 +495,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.ui.applyChangesButton.setEnabled(False)
   
     if self.check_input_parameters() and self.all_installed :
+      self.init_conda()
 
       self.ui.timeLabel.setHidden(False)
       slicer.app.processEvents()
@@ -485,37 +506,65 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
       if not result_pythonpath : 
         self.give_pythonpath_windows(name_env)
         result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
-      
-      args = [self.input_dir, self.output, self.data_type, self.log_path]
 
-      conda_exe = self.conda.getCondaExecutable()
-      command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
-      for arg in args :
-            command.append("\""+arg+"\"")
+      if 'Airway' in self.data_type.split(' '):
+        for task in ['binary', 'severity', 'regression']:
+          if not self.cancel :
+            args = self.find_cli_parameters(task)
+            conda_exe = self.conda.getCondaExecutable()
+            command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
+            for arg in args :
+              command.append("\""+arg+"\"")
 
-      # running in // to not block Slicer
-      self.process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
+            # running in // to not block Slicer
+            self.process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
 
-      self.process.start()
-      self.onProcessStarted()
+            self.process.start()
+            self.onProcessStarted()
 
-      self.ui.applyChangesButton.setEnabled(False)
-      self.ui.doneLabel.setHidden(True)
-      self.ui.timeLabel.setHidden(False)
-      self.ui.progressLabel.setHidden(False)
-      self.ui.progressBar.setHidden(False)
-      start_time = time.time()
-      previous_time = start_time
-      while self.process.is_alive():
-        slicer.app.processEvents()
-        self.onProcessUpdate()
-        current_time = time.time()
-        gap=current_time-previous_time
-        if gap>0.3:
-          previous_time = current_time
-          elapsed_time = current_time - start_time
-          self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
-      self.resetProgressBar()          
+            start_time = time.time()
+            previous_time = start_time
+            while self.process.is_alive():
+              slicer.app.processEvents()
+              self.onProcessUpdate()
+              current_time = time.time()
+              gap=current_time-previous_time
+              if gap>0.3:
+                previous_time = current_time
+                elapsed_time = current_time - start_time
+                self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
+              if self.task == 'Complete':
+                break
+            self.resetProgressBar()
+        self.onProcessCompleted()
+      else:
+        args = self.find_cli_parameters('severity')
+
+        conda_exe = self.conda.getCondaExecutable()
+        command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
+        for arg in args :
+          command.append("\""+arg+"\"")
+
+        # running in // to not block Slicer
+        self.process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
+
+        self.process.start()
+        self.onProcessStarted()
+
+        start_time = time.time()
+        previous_time = start_time
+        while self.process.is_alive():
+          slicer.app.processEvents()
+          self.onProcessUpdate()
+          current_time = time.time()
+          gap=current_time-previous_time
+          if gap>0.3:
+            previous_time = current_time
+            elapsed_time = current_time - start_time
+            self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
+        
+          if self.task == 'Complete':
+            break
 
       self.ui.applyChangesButton.setEnabled(True)
       self.ui.cancelButton.setHidden(True)
@@ -545,12 +594,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     self.ui.progressBar.setValue(0)
     self.progress = 0
     self.previous_saxi_task='predict'
-    self.ui.labelBar.setText(f'Loading severity model...')
-
-    # self.process_completed= False
-      
-    self.start_time = time.time()
-    self.previous_time = self.start_time  
+    self.ui.labelBar.setText(f'Loading {self.task} model...')
     
     self.ui.applyChangesButton.setEnabled(False)
     self.ui.doneLabel.setHidden(True)
@@ -664,85 +708,23 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     return "libxrender1" in clean_output1 and "libgl1-mesa-glx" in clean_output2
 
 
-def is_ubuntu_installed(self)->bool:
-    '''
-    Check if wsl is install with Ubuntu
-    '''
-    result = subprocess.run(['wsl', '--list'], capture_output=True, text=True)
-    output = result.stdout.encode('utf-16-le').decode('utf-8')
-    clean_output = output.replace('\x00', '')
+  def find_cli_parameters(self, task):
 
-    return 'Ubuntu' in clean_output
+    self.task = task
+    self.nn_type = self.find_nn_type()
+    self.model, self.num_classes = self.find_model_name()
 
-
-
-#
-# ShapeClassificationLogic
-#
-
-
-class ShapeClassificationLogic(ScriptedLoadableModuleLogic):
-  """This class should implement all the actual
-  computation done by your module.  The interface
-  should be such that other python code can import
-  this class and make use of the functionality without
-  requiring an instance of the Widget.
-  Uses ScriptedLoadableModuleLogic base class, available at:
-  https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
-
-  """
-
-  def __init__(self, input_dir = "None", output_dir="None", data_type="None", log_path='./'):
+    parameters = [self.input_dir, 
+                  self.output, 
+                  self.data_type, 
+                  self.task, 
+                  self.model, 
+                  self.nn_type, 
+                  str(self.num_classes), 
+                  self.log_path]
     
-    """Called when the logic class is instantiated. Can be used for initializing member variables."""
-    ScriptedLoadableModuleLogic.__init__(self)
-
-    self.output_dir = output_dir
-    self.input_dir = input_dir
-    self.data_type = data_type
-    self.log_path = log_path
-
-  def process(self):
-    """
-    Run the classification algorithm.
-    Can be used without GUI widget.
-    """
-    
-    parameters = {}
-
-    parameters ["input_dir"] = self.input_dir
-    parameters ["output_dir"] = self.output_dir
-    parameters ['data_type'] = self.data_type
-    parameters ['log_path'] = self.log_path
-
-    if 'Airway' in self.data_type.split(' '):
-      for self.task in ['severity', 'binary', 'regression']:
-        self.nn_type = self.find_nn_type()
-        self.model, self.num_classes = self.find_model_name()
-
-        parameters ['task'] = self.task
-        parameters ['model'] = self.model
-        parameters ['nn_type'] = self.nn_type
-        parameters ['num_classes'] = self.num_classes
-
-        shapeaxi_process = slicer.modules.shapeclassificationcli
-        self.cliNode = slicer.cli.run(shapeaxi_process,None, parameters)  
-        return shapeaxi_process
-      
-    else:
-      self.task = 'severity'
-      self.nn_type = self.find_nn_type()
-      self.model, self.num_classes = self.find_model_name()
-
-      parameters ['task'] = self.task
-      parameters ['model'] = self.model
-      parameters ['nn_type'] = self.nn_type
-      parameters ['num_classes'] = self.num_classes
-
-      shapeaxi_process = slicer.modules.shapeclassificationcli
-      self.cliNode = slicer.cli.run(shapeaxi_process,None, parameters)  
-      return shapeaxi_process
-  
+    return parameters
+        
   def find_nn_type(self):
     if self.task == 'regression':
       return 'SaxiMHAFBRegression'
@@ -775,3 +757,35 @@ class ShapeClassificationLogic(ScriptedLoadableModuleLogic):
       print("No model found")
       return None, None
     return model_name, num_classes
+
+def is_ubuntu_installed(self)->bool:
+    '''
+    Check if wsl is install with Ubuntu
+    '''
+    result = subprocess.run(['wsl', '--list'], capture_output=True, text=True)
+    output = result.stdout.encode('utf-16-le').decode('utf-8')
+    clean_output = output.replace('\x00', '')
+
+    return 'Ubuntu' in clean_output
+
+
+class ShapeClassificationLogic(ScriptedLoadableModuleLogic):
+  """This class should implement all the actual
+  computation done by your module.  The interface
+  should be such that other python code can import
+  this class and make use of the functionality without
+  requiring an instance of the Widget.
+  Uses ScriptedLoadableModuleLogic base class, available at:
+  https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
+
+  """
+
+  def __init__(self, input_dir = "None", output_dir="None", data_type="None", log_path='./'):
+    
+    """Called when the logic class is instantiated. Can be used for initializing member variables."""
+    ScriptedLoadableModuleLogic.__init__(self)
+
+    self.output_dir = output_dir
+    self.input_dir = input_dir
+    self.data_type = data_type
+    self.log_path = log_path
