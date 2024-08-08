@@ -330,5 +330,5 @@ if __name__ == '__main__':
   #   args.task = 'severity'
   main(args)
 
-  with open(linux2windows_path(args.log_path),'w+') as log_f :
-    log_f.write(f"Complete,NaN,NaN,NaN")
+  # with open(linux2windows_path(args.log_path),'w+') as log_f :
+  #   log_f.write(f"Complete,NaN,NaN,NaN")
