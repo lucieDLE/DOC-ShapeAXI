@@ -12,10 +12,3 @@
 ## Installation
 
 ## Running the module
-
- - You will find the module under the name  `DOCShapeAXI` in the `Automated Dental Tools` tab.
- #### Inputs group
- - Data Type: type of dataset to predict --> three data types are available for now: Cleft/Airways/Condyles
- - input directory
- #### Output group
- - output directory: 
