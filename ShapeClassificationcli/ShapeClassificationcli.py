@@ -193,7 +193,6 @@ def saxi_gradcam(args, out_model_path):
 
       Vcam = gradcam_process(args, gcam_np, F, PF, V, device='cuda')
 
-      surf = test_ds.getSurf(idx)
       surf.GetPointData().AddArray(Vcam)
       psp.MedianFilter(surf, Vcam)
 
