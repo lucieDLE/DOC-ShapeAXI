@@ -1,3 +1,2 @@
 # exclude pycache (.pyc) files
 *.pyc
-ShapeClassificationcli/ShapeAXI/*
