@@ -533,8 +533,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
                 previous_time = current_time
                 elapsed_time = current_time - start_time
                 self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
-              if self.task == 'Complete':
-                break
+
             self.resetProgressBar()
         self.onProcessCompleted()
       else:
@@ -562,9 +561,8 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
             previous_time = current_time
             elapsed_time = current_time - start_time
             self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
-        
-          if self.task == 'Complete':
-            break
+        self.resetProgressBar()
+        self.onProcessCompleted()
 
       self.ui.applyChangesButton.setEnabled(True)
       self.ui.cancelButton.setHidden(True)
@@ -732,9 +730,9 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
       return 'SaxiMHAFBClassification'
 
   def find_model_name(self):
-    num_classes = 4
     if 'Condyle' in self.data_type.split(' '):
       model_name='condyles_4_class'
+      self.num_classes = 4
 
     elif 'Airway' in self.data_type.split(' '):
       if self.task == 'binary':
@@ -743,6 +741,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
       elif self.task == 'severity':
         model_name='airways_4_class'
+        self.num_classes = 4
 
       elif self.task == 'regression':
         model_name='airways_4_regress'
@@ -752,11 +751,12 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
     elif 'Cleft' in self.data_type.split(' '):
       model_name='clefts_4_class'
+      self.num_classes = 4
 
     else:
       print("No model found")
       return None, None
-    return model_name, num_classes
+    return model_name, self.num_classes
 
 def is_ubuntu_installed(self)->bool:
     '''
