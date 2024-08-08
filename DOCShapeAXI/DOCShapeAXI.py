@@ -157,6 +157,7 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.cancel = False
     self.all_installed = True
 
+    self.ui.errorLabel.setVisible(False)
     self.ui.timeLabel.setVisible(False)
     self.ui.labelBar.setVisible(False)
     self.ui.labelBar.setStyleSheet(f"""QLabel{{font-size: 12px; qproperty-alignment: AlignCenter;}}""")
@@ -498,6 +499,7 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       self.init_conda()
 
       self.ui.timeLabel.setHidden(False)
+      self.ui.timeLabel.setText('time: 0.0s')
       slicer.app.processEvents()
 
       name_env = 'shapeaxi'
@@ -531,8 +533,8 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
               gap=current_time-previous_time
               if gap>0.3:
                 previous_time = current_time
-                elapsed_time = current_time - start_time
-                self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
+                self.elapsed_time = current_time - start_time
+                self.ui.timeLabel.setText(f"time : {self.elapsed_time:.2f}s")
 
             self.resetProgressBar()
         self.onProcessCompleted()
@@ -559,9 +561,8 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
           gap=current_time-previous_time
           if gap>0.3:
             previous_time = current_time
-            elapsed_time = current_time - start_time
-            self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
-        self.resetProgressBar()
+            self.elapsed_time = current_time - start_time
+            self.ui.timeLabel.setText(f"time : {self.elapsed_time:.2f}s")
         self.onProcessCompleted()
 
       self.ui.applyChangesButton.setEnabled(True)
@@ -590,6 +591,7 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.nbSubjects += sum(1 for elt in os.listdir(self.input_dir) if os.path.splitext(elt)[1] == '.vtk')
 
     self.ui.progressBar.setValue(0)
+    self.cancel = False
     self.progress = 0
     self.previous_saxi_task='predict'
     self.ui.labelBar.setText(f'Loading {self.task} model...')
@@ -630,34 +632,45 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
               self.ui.progressBar.setValue(progressbar_value)
               self.ui.progressBar.setFormat(str(progressbar_value)+"%")
-            if self.task == 'Complete':
-              self.onProcessCompleted()
-
 
   def onProcessCompleted(self):
+
+    if self.cancel:
+      self.ui.doneLabel.setText("Process cancelled by user")
+      self.ui.doneLabel.setStyleSheet(f"""QLabel{{font-size: 20px; qproperty-alignment: AlignCenter; color:'red';}}""")
+
+      print("Process completed successfully.")
+    else:
+      self.ui.doneLabel.setText("Process completed successfully")
+      self.ui.doneLabel.setStyleSheet(f"""QLabel{{font-size: 20px; qproperty-alignment: AlignCenter; color:'green';}}""")
+
+      print("Process completed successfully.")
+
     self.ui.applyChangesButton.setEnabled(True)
     self.ui.resetButton.setEnabled(True)
     self.ui.progressLabel.setHidden(False)     
     self.ui.cancelButton.setHidden(True)
     self.resetProgressBar()
     self.ui.doneLabel.setHidden(False)
-    print("Process completed successfully.")
     
-    elapsed_time = round(time.time() - self.start_time,3)
-    self.ui.timeLabel.setText(f"time : {elapsed_time:.2f}s")
+    self.ui.timeLabel.setText(f"time : {self.elapsed_time:.2f}s")
+    self.ui.timeLabel.setHidden(False)
 
     self.ui.doneLabel.setHidden(False)
       
   def onReset(self):
     self.ui.outputLineEdit.setText("")
     self.ui.mountPointLineEdit.setText("")
+    self.ui.errorLabel.setVisible(False)
 
     self.ui.applyChangesButton.setEnabled(True)
     self.resetProgressBar()
     self.ui.progressLabel.setHidden(True)
     self.ui.doneLabel.setHidden(True)
     self.ui.timeLabel.setHidden(True)
-
+    self.ui.timeLabel.setText(f"time : 0.0s")
+    self.ui.progressBar.setEnabled(False)
+    self.ui.progressBar.setRange(0,100)
     self.removeObservers()  
 
   def onCancel(self):
@@ -666,12 +679,7 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.process.join()
 
     self.cancel=True
-    self.ui.applyChangesButton.setEnabled(True)
-    self.ui.resetButton.setEnabled(True)
-    self.resetProgressBar()
-    self.ui.progressBar.setEnabled(False)
-    self.ui.progressBar.setRange(0,100)
-    self.ui.progressLabel.setHidden(True)
+    self.onReset()
     self.ui.cancelButton.setEnabled(False)
     self.removeObservers()  
     print("Process successfully cancelled.")
