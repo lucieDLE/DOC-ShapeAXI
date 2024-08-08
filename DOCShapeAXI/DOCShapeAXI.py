@@ -87,10 +87,8 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.data_type = ""
     self.all_installed = False
 
-    self.log_path = os.path.normpath(os.path.join(slicer.util.tempDirectory(), 'process.log'))
     self.time_log = 0 # for progress bar
     self.progress = 0
-    self.currentPredDict = {}
     self.previous_time = 0
     self.start_time = 0
 
@@ -281,15 +279,6 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   ##
   ##  Process
   ##
-
-  # def is_package_installed(self, package):
-  #   try:
-  #     pkg_resources.get_distribution(package)
-  #     return True
-  #   except pkg_resources.DistributionNotFound:
-  #     return False
-
-
   
   def check_pythonpath_windows(self,name_env,file):
       '''
@@ -314,7 +303,6 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
           mnt_paths.append(f"\"{self.windows_to_linux_path(path)}\"")
       pythonpath_arg = 'PYTHONPATH=' + ':'.join(mnt_paths)
       conda_exe = self.conda.getCondaExecutable()
-      # print("Conda_exe : ",conda_exe)
       argument = [conda_exe, 'env', 'config', 'vars', 'set', '-n', name_env, pythonpath_arg]
       results = self.conda.condaRunCommand(argument)
       print("output GIVE python path: ", results)
@@ -358,10 +346,6 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
   def onCheckRequirements(self):
 
-    # link = 'https://github.com/DCBIA-OrthoLab/SlicerConda'
-    # ready = True
-    # if not CondaSetUp
-    # if not self.is_package_installed('CondaSetUp'):
     try:
       import CondaSetUp
     except:
@@ -380,7 +364,6 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
       self.ui.timeLabel.setHidden(False)
       self.ui.timeLabel.setText(f"Checking if wsl is installed, this task may take a moments")
-      # slicer.app.processEvents()
 
       if wsl : # if wsl is install
         self.ui.timeLabel.setText("WSL installed")
@@ -388,15 +371,15 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if not lib : # if lib required are not install
           self.ui.timeLabel.setText(f"Checking if the required librairies are installed, this task may take a moments")
           messageBox = qt.QMessageBox()
-          text = "Code can't be launch. \nWSL doen't have all the necessary libraries, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading may be blocked by Chrome, this is normal, just authorize it."
-          # text = "WSL doen't have all the necessary libraries, please download the installer and follow the instructions <a href=\"https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading\">here</a> for installation. The link may be blocked by Chrome, just authorize it."
+          # text = "Code can't be launch. \nWSL doen't have all the necessary libraries, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading may be blocked by Chrome, this is normal, just authorize it."
+          text = "WSL doen't have all the necessary libraries, please download the installer and follow the instructions <a href=\"https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading\">here</a> for installation. The link may be blocked by Chrome, just authorize it."
 
           messageBox.information(None, "Information", text)
           return False
       else : # if wsl not install, ask user to install it ans stop process
         messageBox = qt.QMessageBox()
-        text = "Code can't be launch. \nWSL is not installed, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading may be blocked by Chrome, this is normal, just authorize it."
-        # text = "WSL is not installed, please download the installer and follow the instructions <a href=\"https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading\">here</a> for installation. The link may be blocked by Chrome, just authorize it."
+        # text = "Code can't be launch. \nWSL is not installed, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading may be blocked by Chrome, this is normal, just authorize it."
+        text = "WSL is not installed, please download the installer and follow the instructions <a href=\"https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading\">here</a> for installation. The link may be blocked by Chrome, just authorize it."
 
         messageBox.information(None, "Information", text)
         return False
@@ -483,18 +466,11 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
   def onApplyChangesButton(self):
     '''
-    This function is called when the user want to run dentalmodelseg
-    For Linux system : - check the installation of shapeaxi and pytorch3d in Slicer, if no with consent of user it install them
-    - run crownsegmentationcli as a module of Slicer
-
-    For Windows sytem : - check the installation of wsl, if no show a message asking asking for the user to do it and stop the process
-    - check the installation of miniconda in wsl, if no show a message asking for the user to do it and sop the process
-    - check if the environnement "shapeaxi" exist, if no it will create it (with consent of user) with the required librairies (shapeaxi and pytorch3d)
-    - run the file CrownSegmentationcli.py into wsl in the environment 'shapeaxi'
+    This function is called when the user want to run the prediction and explainabity script of ShapeAXI
     '''
-
     self.ui.applyChangesButton.setEnabled(False)
   
+    # TODO: find a better way: checking requirements everytime the user click or open the extension is not convenient because slow
     if self.check_input_parameters() and self.all_installed :
       self.init_conda()
 
@@ -573,7 +549,6 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.progressBar.setValue(0)
     self.progress = 0
     self.previous_saxi_task='predict'
-    # self.process_completed= False
 
     self.ui.timeLabel.setVisible(False)
     self.ui.labelBar.setVisible(False)
