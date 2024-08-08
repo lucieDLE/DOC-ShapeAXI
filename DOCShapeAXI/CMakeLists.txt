@@ -1,11 +1,11 @@
 #-----------------------------------------------------------------------------
-set(MODULE_NAME ShapeClassification)
+set(MODULE_NAME DOCShapeAXI)
 
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
-  ShapeClassification_utils/__init__.py
-  ShapeClassification/ShapeClassification_utils/install_pytorch.py
+  DOCShapeAXI_utils/__init__.py
+  DOCShapeAXI/DOCShapeAXI_utils/install_pytorch.py
   )
 
 set(MODULE_PYTHON_RESOURCES

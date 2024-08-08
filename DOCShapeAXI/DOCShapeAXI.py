@@ -14,19 +14,19 @@ sys.path.append('../../../ShapeAXI/')
 from pathlib import Path
 import re
 #
-# ShapeClassification
+# DOCShapeAXI
 #
 
 
 
-class ShapeClassification(ScriptedLoadableModule):
+class DOCShapeAXI(ScriptedLoadableModule):
   """Uses ScriptedLoadableModule base class, available at:
   https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
   """
 
   def __init__(self, parent):
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "ShapeClassification"  # TODO: make this more human readable by adding spaces
+    self.parent.title = "DOCShapeAXI"  # TODO: make this more human readable by adding spaces
     # TODO: set categories (folders where the module shows up in the module selector)
     self.parent.categories = ["Classification"]
     self.parent.dependencies = []  # TODO: add here list of module names that this module requires
@@ -66,7 +66,7 @@ class ShapeClassification(ScriptedLoadableModule):
 
 
       
-class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
+class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   """Uses ScriptedLoadableModuleWidget base class, available at:
   https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
   """
@@ -102,7 +102,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
     # Load widget from .ui file (created by Qt Designer).
     # Additional widgets can be instantiated manually and added to self.layout. 
-    uiWidget = slicer.util.loadUI(self.resourcePath("UI/ShapeClassification.ui"))
+    uiWidget = slicer.util.loadUI(self.resourcePath("UI/DOCShapeAXI.ui"))
     self.layout.addWidget(uiWidget)
     self.ui = slicer.util.childWidgetVariables(uiWidget)
 
@@ -113,7 +113,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
     # Create logic class. Logic implements all computations that should be possible to run
     # in batch mode, without a graphical user interface.
-    self.logic = ShapeClassificationLogic()
+    self.logic = DOCShapeAXILogic()
 
     # Connections
     # These connections ensure that we update parameter node when scene is closed
@@ -453,15 +453,15 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
     if "Error" in result : # pytorch3d not installed or badly installed 
       self.ui.timeLabel.setText(f"Installing pytorch3d")
 
-      result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassification_utils.install_pytorch") ## return True 
+      result_pythonpath = self.check_pythonpath_windows(name_env,"DOCShapeAXI_utils.install_pytorch") ## return True 
       if not result_pythonpath :
         self.give_pythonpath_windows(name_env)
-        result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassification_utils.install_pytorch")
+        result_pythonpath = self.check_pythonpath_windows(name_env,"DOCShapeAXI_utils.install_pytorch")
         
       if result_pythonpath : 
         conda_exe = self.conda.getCondaExecutable()
         path_pip = self.conda.getCondaPath()+f"/envs/{name_env}/bin/pip"
-        command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassification_utils.install_pytorch",path_pip]
+        command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"DOCShapeAXI_utils.install_pytorch",path_pip]
 
       process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
       process.start()
@@ -502,17 +502,17 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
 
       name_env = 'shapeaxi'
          
-      result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
+      result_pythonpath = self.check_pythonpath_windows(name_env,"DOCShapeAXIcli")
       if not result_pythonpath : 
         self.give_pythonpath_windows(name_env)
-        result_pythonpath = self.check_pythonpath_windows(name_env,"ShapeClassificationcli")
+        result_pythonpath = self.check_pythonpath_windows(name_env,"DOCShapeAXIcli")
 
       if 'Airway' in self.data_type.split(' '):
         for task in ['binary', 'severity', 'regression']:
           if not self.cancel :
             args = self.find_cli_parameters(task)
             conda_exe = self.conda.getCondaExecutable()
-            command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
+            command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"DOCShapeAXIcli"]
             for arg in args :
               command.append("\""+arg+"\"")
 
@@ -540,7 +540,7 @@ class ShapeClassificationWidget(ScriptedLoadableModuleWidget, VTKObservationMixi
         args = self.find_cli_parameters('severity')
 
         conda_exe = self.conda.getCondaExecutable()
-        command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"ShapeClassificationcli"]
+        command = [conda_exe, "run", "-n", name_env, "python" ,"-m", f"DOCShapeAXIcli"]
         for arg in args :
           command.append("\""+arg+"\"")
 
@@ -769,7 +769,7 @@ def is_ubuntu_installed(self)->bool:
     return 'Ubuntu' in clean_output
 
 
-class ShapeClassificationLogic(ScriptedLoadableModuleLogic):
+class DOCShapeAXILogic(ScriptedLoadableModuleLogic):
   """This class should implement all the actual
   computation done by your module.  The interface
   should be such that other python code can import

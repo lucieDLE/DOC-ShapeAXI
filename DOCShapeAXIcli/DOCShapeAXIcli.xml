@@ -2,7 +2,7 @@
 <executable>
   <category>Classification</category>
   <index>0</index>
-  <title>ShapeClassificationcli</title>
+  <title>DOCShapeAXIcli</title>
   <description><![CDATA[CLI module that can be built into an extension]]></description>
   <version>0.1.0.</version>
   <documentation-url>https://github.com/username/project</documentation-url>

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13.4)
 
-project(SlicerDentalModelSeg)
+project(DOCShapeAXI)
 
 #-----------------------------------------------------------------------------
 # Extension meta-information
@@ -19,8 +19,8 @@ include(${Slicer_USE_FILE})
 
 #-----------------------------------------------------------------------------
 # Extension modules
-add_subdirectory(ShapeClassification)
-add_subdirectory(ShapeClassificationcli)
+add_subdirectory(DOCShapeAXI)
+add_subdirectory(DOCShapeAXIcli)
 ## NEXT_MODULE
 
 #-----------------------------------------------------------------------------

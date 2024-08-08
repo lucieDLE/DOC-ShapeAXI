@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------
-set(MODULE_NAME ShapeClassificationcli)
+set(MODULE_NAME DOCShapeAXIcli)
 
 SlicerMacroBuildScriptedCLI(
   NAME ${MODULE_NAME}
