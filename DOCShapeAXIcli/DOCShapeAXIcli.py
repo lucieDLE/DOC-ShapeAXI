@@ -66,42 +66,6 @@ class SelfAttention(nn.Module):
         x, score = self.attn(x,x)
         return x
 
-
-# def find_best_model(datatype):
-   
-#   if 'Condyle' in datatype.split(' '):
-#     model_name='condyles_4_class'
-#     nn = 'SaxiMHAFBClassification'
-#     args.num_classes = 4
-
-#   elif 'Airway' in datatype.split(' '):
-#     if args.task == 'binary':
-#       model_name='airways_2_class'
-#       nn = 'SaxiMHAFBClassification'
-#       args.num_classes = 2
-
-#     elif args.task == 'severity':
-#       model_name='airways_4_class'
-#       nn = 'SaxiMHAFBClassification'
-#       args.num_classes = 4
-
-#     elif args.task == 'regression':
-#       model_name='airways_4_regress'
-#       nn = 'SaxiMHAFBRegression'
-#       args.num_classes = 1
-#     else:
-#        print("no model found for undefined task")
-
-#   elif 'Cleft' in datatype.split(' '):
-#     model_name='clefts_4_class'
-#     nn = 'SaxiMHAFBClassification'
-#     args.num_classes = 4
-
-#   else:
-#     print("No model found")
-#     return None, None
-#   return model_name, nn
-
 def csv_edit(args):
     """
     Check if the surfaces files are present in the input directory and edit csv file with surface path
@@ -276,7 +240,6 @@ def main(args):
 
   args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-  # model_name, args.nn = find_best_model(args.data_type)
   # convert path if windows distribution
   args.input_csv = linux2windows_path(os.path.join(args.output_dir, f"files_{args.data_type}.csv"))
   args.input_dir = linux2windows_path(args.input_dir)
@@ -284,7 +247,6 @@ def main(args):
   args.log_path = linux2windows_path(args.log_path)
 
   with open(args.log_path,'w') as log_f:
-    # clear log file
     log_f.truncate(0)
   
 
@@ -320,15 +282,4 @@ if __name__ == '__main__':
 
   args = parser.parse_args()
 
-  # if  'Airway' in args.data_type.split(' '):
-  #   tasks = ['severity', 'binary', 'regression']
-  #   for task in tasks:
-  #     args.task = task
-  #     main(args)
-
-  # else:
-  #   args.task = 'severity'
   main(args)
-
-  with open(linux2windows_path(args.log_path),'w+') as log_f :
-    log_f.write(f"Complete,NaN,NaN,NaN")

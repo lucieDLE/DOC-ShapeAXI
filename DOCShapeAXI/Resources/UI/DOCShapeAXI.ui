@@ -46,10 +46,7 @@
       <item row="2" column="0" colspan="2">
        <widget class="QLabel" name="labelInstructions">
         <property name="text">
-         <string>This module requires SlicerConda to works. Please see the installation.
-If you already have set up SlicerConda you can use the button below to check if the required dependencies are installed. If not, the module will ask you permission to install them for you.
- 
-If you are not sure if you have installed SlicerConda, you can check the dependencies and an error message will be display if SlicerConda is missing</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This module requires SlicerConda to works. Please see the &lt;a href=&quot;https://github.com/DCBIA-OrthoLab/SlicerConda&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;installation&lt;/span&gt;&lt;/a&gt;. If you already have set up SlicerConda you can use the button below to check if the required dependencies are installed. If not, the module will ask you permission to install them for you. If you are not sure if you have installed SlicerConda, you can check the dependencies and an error message will be display if SlicerConda is missing&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>
@@ -252,6 +249,16 @@ If you are not sure if you have installed SlicerConda, you can check the depende
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="errorLabel">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="text">
+      <string>Error Message:</string>
      </property>
     </widget>
    </item>
