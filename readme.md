@@ -42,15 +42,15 @@ Currently, the extension supports only three types of datasets:
 
 ## How does the module work?
 
- 1. Select a **Data Type**: 
-    - nasopharynx airways obstruction, mandibular condyles, and alveolar bone defect in cleft.
-    - This step allow to select automatically the appropriate classification model.
+ 1. Select a **Data Type**: nasopharynx airways obstruction, mandibular condyles, and alveolar bone defect in cleft.
+   > [!NOTE]
+   > This step allow to select automatically the appropriate classification model.
  2. Select an **Input folder**: a folder that contains 3D models stored as VTK files.
  3. Select an **Output directory**: a folder that will contain all the outputs (model, predictions results stored in a CSV file, and explainability visualizations).
 ![User Interface.](DOCShapeAXI/Resources/Image/global_ui.png)
- 4. Run the module: 
-    - Click on the **Run Prediction** button. 
-    - The progress will be display in the UI with a progress bar.
+ 4. Run the module: Click on the **Run Prediction** button. 
+   > [!NOTE]
+   > The progress will be display in the UI with a progress bar.
 
 ## Viewing the Results
 
@@ -67,7 +67,6 @@ B. a folder named **Explainability** containing the visualization results:
   5. Set the **Data Scalar Range** to **Auto** if not set
     ![Screenshot of the location and values of the visualization settings](DOCShapeAXI/Resources/Image/explainability_params.png)
   6. Change the **Active Scalar** to the class you want to visualize
-    ![Exemple of explainability results obtained with the regression model on the nasopharynx airway obstruction dataset.](DOCShapeAXI/Resources/Image/explainability_result.png)
 
 ## Exemple (coming soon)
 
