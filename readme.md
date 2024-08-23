@@ -18,9 +18,9 @@ The extension integrates advanced deep learning algorithms enabling the classifi
 
  - This extension works with Linux and Windows.
  - This extension requires the installation of SlicerConda. Follows the [instructions](https://github.com/DCBIA-OrthoLab/SlicerConda) for more information.
-
-  > [!]
+  > [!NOTE]
   > If the user is not sure if SlicerConda is already installed, the system will inform him, as shown below in the user interface
+  > 
   > ![SlicerConda information message.](DOCShapeAXI/Resources/Image/ui_requirements.png)
 
 
@@ -55,9 +55,10 @@ Currently, the extension supports only three types of datasets:
 ## Viewing the Results
 
 All the results are saved in the **Output directory** specified by the user. you can find:
-- the csv file containing the prediction made by the network.
 
-- a folder named **Explainability** containing the visualization results:
+A. the csv file containing the prediction made by the network.
+
+B. a folder named **Explainability** containing the visualization results:
   1. Open the folder and drag and drop a shape in Slicer
   2. Go to the module **Models**
       ![location of the Models tab to select in Slicer.](DOCShapeAXI/Resources/Image/explainability_tab.png)
