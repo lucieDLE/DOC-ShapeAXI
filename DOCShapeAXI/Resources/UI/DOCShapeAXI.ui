@@ -46,7 +46,7 @@
       <item row="2" column="0" colspan="2">
        <widget class="QLabel" name="labelInstructions">
         <property name="text">
-         <string>This module requires SlicerConda to works. Please see the installation (link to github).
+         <string>This module requires SlicerConda to works. Please see the installation.
 If you already have set up SlicerConda you can use the button below to check if the required dependencies are installed. If not, the module will ask you permission to install them for you.
  
 If you are not sure if you have installed SlicerConda, you can check the dependencies and an error message will be display if SlicerConda is missing</string>
