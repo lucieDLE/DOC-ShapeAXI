@@ -407,7 +407,8 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       if userResponse :
         start_time = time.time()
         previous_time = start_time
-        self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: 0.0s")
+        formatted_time = self.format_time(0)
+        self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: {formatted_time}")
         process = threading.Thread(target=self.conda.condaCreateEnv, args=(name_env,"3.9",["shapeaxi"],)) #run in parallel to not block slicer
         process.start()
         
@@ -418,11 +419,13 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
           if gap>0.3:
             previous_time = current_time
             elapsed_time = current_time - start_time
-            self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: {elapsed_time:.1f}s")
+            formatted_time = self.format_time(self.elapsed_time)
+            self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: {formatted_time}")
     
         start_time = time.time()
         previous_time = start_time
-        self.ui.timeLabel.setText(f"Installation of librairies into the new environnement. This task may take a few minutes.\ntime: 0.0s")
+        formatted_time = self.format_time(0)
+        self.ui.timeLabel.setText(f"Installation of librairies into the new environnement. This task may take a few minutes.\ntime: {formatted_time}")
       else:
         return False
     else:
@@ -458,7 +461,8 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if gap>0.3:
           previous_time = current_time
           elapsed_time = current_time - start_time
-          self.ui.timeLabel.setText(f"Installation of pytorch into the new environnement. This task may take a few minutes.\ntime: {elapsed_time:.1f}s")
+          formatted_time = self.format_time(self.elapsed_time)
+          self.ui.timeLabel.setText(f"Installation of pytorch into the new environnement. This task may take a few minutes.\ntime: {formatted_time}")
     else:
       self.ui.timeLabel.setText(f"pytorch3d is already installed")
       print("pytorch3d already installed")
@@ -509,7 +513,8 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
               if gap>0.3:
                 previous_time = current_time
                 self.elapsed_time = current_time - start_time
-                self.ui.timeLabel.setText(f"time : {self.elapsed_time:.2f}s")
+                formatted_time = self.format_time(self.elapsed_time)
+                self.ui.timeLabel.setText(f"time : {formatted_time}")
 
             self.resetProgressBar()
         self.onProcessCompleted()
@@ -537,7 +542,8 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
           if gap>0.3:
             previous_time = current_time
             self.elapsed_time = current_time - start_time
-            self.ui.timeLabel.setText(f"time : {self.elapsed_time:.2f}s")
+            formatted_time = self.format_time(self.elapsed_time) 
+            self.ui.timeLabel.setText(f"time : {formatted_time}")
         self.onProcessCompleted()
 
       self.ui.applyChangesButton.setEnabled(True)
@@ -577,7 +583,8 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.timeLabel.setHidden(False)
     self.ui.progressLabel.setHidden(False)
     self.ui.progressBar.setHidden(False)
-    self.ui.timeLabel.setText(f"time : 0.00s") 
+    formatted_time = self.format_time(0)
+    self.ui.timeLabel.setText(f"time : {formatted_time}")
 
 
   def onProcessUpdate(self):
@@ -627,7 +634,8 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.resetProgressBar()
     self.ui.doneLabel.setHidden(False)
     
-    self.ui.timeLabel.setText(f"time : {self.elapsed_time:.2f}s")
+    formatted_time = self.format_time(self.elapsed_time)
+    self.ui.timeLabel.setText(f"time : {formatted_time}")
     self.ui.timeLabel.setHidden(False)
 
     self.ui.doneLabel.setHidden(False)
@@ -642,7 +650,8 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.progressLabel.setHidden(True)
     self.ui.doneLabel.setHidden(True)
     self.ui.timeLabel.setHidden(True)
-    self.ui.timeLabel.setText(f"time : 0.0s")
+    formatted_time = self.format_time(0)
+    self.ui.timeLabel.setText(f"time : {formatted_time}")
     self.ui.progressBar.setEnabled(False)
     self.ui.progressBar.setRange(0,100)
     self.removeObservers()  
@@ -658,6 +667,12 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.removeObservers()  
     print("Process successfully cancelled.")
 
+  def format_time(self,seconds):
+    """ Convert seconds to H:M:S format. """
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    return f"{hours:02}:{minutes:02}:{secs:02}"
 
   def windows_to_linux_path(self,windows_path):
     '''
