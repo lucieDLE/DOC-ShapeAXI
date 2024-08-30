@@ -153,7 +153,8 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.installCliNode = None
     self.progress = 0
     self.cancel = False
-    self.all_installed = True
+    self.init_conda()
+    self.onCheckRequirements()
 
     self.ui.errorLabel.setVisible(False)
     self.ui.timeLabel.setVisible(False)
@@ -470,9 +471,7 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     '''
     self.ui.applyChangesButton.setEnabled(False)
   
-    # TODO: find a better way: checking requirements everytime the user click or open the extension is not convenient because slow
-    if self.check_input_parameters() and self.all_installed :
-      self.init_conda()
+    if self.check_input_parameters() :
 
       self.ui.timeLabel.setHidden(False)
       self.ui.timeLabel.setText('time: 0.0s')
