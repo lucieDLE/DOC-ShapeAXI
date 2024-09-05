@@ -374,15 +374,15 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if not lib : # if lib required are not install
           self.ui.timeLabel.setText(f"Checking if the required librairies are installed, this task may take a moments")
           messageBox = qt.QMessageBox()
-          # text = "Code can't be launch. \nWSL doen't have all the necessary libraries, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading may be blocked by Chrome, this is normal, just authorize it."
-          text = "WSL doen't have all the necessary libraries, please download the installer and follow the instructions <a href=\"https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading\">here</a> for installation. The link may be blocked by Chrome, just authorize it."
+          # text = "Code can't be launch. \nWSL doen't have all the necessary libraries, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_WSL2.zip may be blocked by Chrome, this is normal, just authorize it."
+          text = "WSL doen't have all the necessary libraries, please download the installer and follow the instructions <a href=\"https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_WSL2.zip\">here</a> for installation. The link may be blocked by Chrome, just authorize it."
 
           messageBox.information(None, "Information", text)
           return False
       else : # if wsl not install, ask user to install it ans stop process
         messageBox = qt.QMessageBox()
-        # text = "Code can't be launch. \nWSL is not installed, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading may be blocked by Chrome, this is normal, just authorize it."
-        text = "WSL is not installed, please download the installer and follow the instructions <a href=\"https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_wsl2.zip\nDownloading\">here</a> for installation. The link may be blocked by Chrome, just authorize it."
+        text = "Code can't be launch. \nWSL is not installed, please download the installer and follow the instructin here : https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_WSL2.zip may be blocked by Chrome, this is normal, just authorize it."
+        text = "WSL is not installed, please download the installer and follow the instructions <a href=\"https://github.com/DCBIA-OrthoLab/SlicerAutomatedDentalTools/releases/download/wsl2_windows/installer_WSL2.zip\">here</a> for installation. The link may be blocked by Chrome, just authorize it."
 
         messageBox.information(None, "Information", text)
         return False
