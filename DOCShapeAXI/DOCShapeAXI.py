@@ -346,6 +346,8 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       self.conda = CondaSetUpCall() 
 
   def onCheckRequirements(self):
+    self.ui.labelBar.setVisible(False)
+    self.ui.progressLabel.setVisible(False)
 
     try:
       import CondaSetUp
@@ -419,7 +421,7 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
           if gap>0.3:
             previous_time = current_time
             elapsed_time = current_time - start_time
-            formatted_time = self.format_time(self.elapsed_time)
+            formatted_time = self.format_time(elapsed_time)
             self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: {formatted_time}")
     
         start_time = time.time()
@@ -453,6 +455,8 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
       process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
       process.start()
+      start_time = time.time()
+      previous_time = start_time
     
       while process.is_alive():
         slicer.app.processEvents()
@@ -461,7 +465,7 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if gap>0.3:
           previous_time = current_time
           elapsed_time = current_time - start_time
-          formatted_time = self.format_time(self.elapsed_time)
+          formatted_time = self.format_time(elapsed_time)
           self.ui.timeLabel.setText(f"Installation of pytorch into the new environnement. This task may take a few minutes.\ntime: {formatted_time}")
     else:
       self.ui.timeLabel.setText(f"pytorch3d is already installed")
