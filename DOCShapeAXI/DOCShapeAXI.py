@@ -8,7 +8,7 @@ import sys
 import time
 import threading
 import pkg_resources
-
+import signal
 sys.path.append('../../../ShapeAXI/')
 
 from pathlib import Path
@@ -531,10 +531,18 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
           command.append("\""+arg+"\"")
 
         # running in // to not block Slicer
-        self.process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
+        # self.process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
 
-        self.process.start()
+        self.process = threading.Thread(target=self.condaRunCommand, args=(command,))
+        # asyncio.run(self.runAsyncCommand(command)) # create the threadPool (self.process), and the submit the command (self.future)
+        # self.process = subprocess.Popen(self.conda.condaRunCommand(command), shell=True)
+        # self.process = threading.Thread(self.condaRunCommand(command)
+        # se
+
+
         self.onProcessStarted()
+        self.process.start()
+        print('process started')
 
         start_time = time.time()
         previous_time = start_time
@@ -552,6 +560,49 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
       self.ui.applyChangesButton.setEnabled(True)
       self.ui.cancelButton.setHidden(True)
+
+
+  # async def runAsyncCommand(self,command) :
+  #   loop = asyncio.get_running_loop()
+
+  #   # Run condaRunCommand in a separate thread to avoid blocking
+  #   self.process = concurrent.futures.ThreadPoolExecutor()
+  #   self.future = loop.run_in_executor(self.process, self.conda.condaRunCommand, command)
+
+  #   self.onProcessStarted()
+
+  #   start_time = time.time()
+  #   previous_time = start_time
+  #   # while self.process.is_alive():
+  #   while not self.future.done():
+  #     slicer.app.processEvents()
+  #     self.onProcessUpdate()
+
+  #     current_time = time.time()
+  #     gap=current_time-previous_time
+  #     if gap>0.3:
+  #       previous_time = current_time
+  #       self.elapsed_time = current_time - start_time
+  #       formatted_time = self.format_time(self.elapsed_time) 
+  #       self.ui.timeLabel.setText(f"time : {formatted_time}")
+  #     await asyncio.sleep(0.1)  # Don't block the event loop
+  #   self.onProcessCompleted()
+
+  # async def cancelAsyncRun(self):
+  #   if self.process and self.process.returncode is None:
+  #     print(f"Terminating process")
+  #     self.process.terminate()
+  #     await self.process.wait()
+  #     print(f" process terminated  with return code {self.process.returncode}")
+
+  # async def checkProcessStatus(self):
+  #   if self.process:
+  #     if self.process.returncode is None:
+  #       print("process still running")
+  #     else:
+  #       print(f"Process has been terminated with return code: {self.process.returncode}")
+  #   else:
+  #     print("No process running ")
 
 
   def resetProgressBar(self):
@@ -589,6 +640,53 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.progressBar.setHidden(False)
     formatted_time = self.format_time(0)
     self.ui.timeLabel.setText(f"time : {formatted_time}")
+
+
+  def condaRunCommand(self, command: list[str],env_name="None"):
+    '''
+    Runs a command in a specified Conda environment, handling different operating systems.
+    '''
+    path_activate = self.conda.getActivateExecutable()
+    user = self.conda.getUser()
+
+    print("INPUT COMMAND", command)
+
+    if path_activate=="None":
+        return "Path to conda no setup"
+
+    if env_name == "None":
+        command_execute=""
+    else :
+        command_execute = f"source {path_activate} {env_name} &&"
+    for com in command :
+        command_execute = command_execute+ " "+com
+
+    command_to_execute = ["wsl", "--user", user,"--","bash","-c", command_execute]
+    print("command_to_execute in condaRunCommand : ",command_to_execute)
+
+    # try: 
+    print("command_execute dans conda run : ",command_to_execute)
+    self.subpro = subprocess.Popen(command_to_execute, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+                            text=True, encoding='utf-8', errors='replace', env=slicer.util.startupEnvironment(),
+                            # executable="/bin/bash"
+                            # preexec_fn=os.setsid
+                            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP  # For Windows
+                            )
+    stdout,stderr = self.subpro.communicate()
+    if stdout:
+        print(f"Output: {stdout}")
+    if stderr:
+        print(f"Error: {stderr}")
+
+    # return self.command_process
+    # except Exception as e:
+    #     print(f"An error occurred: {str(e)}")
+    #     return f"An error occurred: {str(e)}"
+
+  # def kill_process(self):
+  #   if self.process  and self.process.pid:
+  #     os.kill(self.process.pid, signal.SIGKILL)
+  #     print(f"Process {self.process.pid} killed")
 
 
   def onProcessUpdate(self):
@@ -663,13 +761,56 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   def onCancel(self):
     print("cancelling processs, be patient")
     self.ui.labelBar.setText(f'Cancelling process...')
-    self.process.join()
 
-    self.cancel=True
-    self.onReset()
+    self.subpro.send_signal(signal.CTRL_BREAK_EVENT)
+    print("Cancellation requested. Terminating process...")
+
+    # output = self.subpro.stdout.readline()
+    # if output:
+    #   print(f"Output: {output.strip()}")
+
+    # error = self.subpro.stderr.readline()
+    # if error:
+    #   print(f"Error: {error.strip()}")
+    # else:
+    #   print("process already done")
+        
+    self.ui.labelBar.setText(f'Cancelling process...')
+    # self.process.join()
+    # self.process.terminate()
+    self.cancel = True
     self.ui.cancelButton.setEnabled(False)
     self.removeObservers()  
+    self.onReset()
     print("Process successfully cancelled.")
+
+  def onAsynCancel(self):
+    print("cancelling processs, be patient")
+    self.ui.labelBar.setText(f'Cancelling process...')
+    if self.future:
+      if not self.future.done():  # Check if the task is still running
+        print("Cancelling process, please wait...")
+        self.ui.labelBar.setText(f'Cancelling process...')
+        self.future.cancel()
+        self.process.shutdown(wait=False, cancel_futures=True)
+        # SlicerConda does not handle cancel signal so future.cancel*() or executorPool.shutdiwn() will wait that SlicerConda is completed to cancel/shutdown
+        # the only way I found is to use kill -9 # kinda ugly        
+        # self.kill_process()
+        self.cancel = True
+        self.ui.cancelButton.setEnabled(False)
+        self.removeObservers()  
+        print("Process successfully cancelled.")
+      else:
+        print("Process is already completed.")
+    else:
+        print("No running process to cancel.")
+    # self.process.join()
+
+    # self.cancel=True
+    self.onReset()
+    # self.ui.cancelButton.setEnabled(False)
+    # self.removeObservers()  
+    # print("Process successfully cancelled.")
 
   def format_time(self,seconds):
     """ Convert seconds to H:M:S format. """
