@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<executable>
+  <category>Segmentation</category>
+  <index>0</index>
+  <title>ShapeClassificationcli</title>
+  <description><![CDATA[CLI module that can be built into an extension]]></description>
+  <version>0.1.0.</version>
+  <documentation-url>https://github.com/username/project</documentation-url>
+  <license/>
+  <contributor>Lucie Dole (UNC Chapel Hill)</contributor>
+  <acknowledgements><![CDATA[...]]></acknowledgements>
+  <parameters>
+
+    <label>IO</label>
+    <description><![CDATA[Input/output parameters]]></description>
+
+    <string>
+      <name>input_dir</name>
+      <label>input_dir</label>
+      <index>0</index>
+      <description>input directory containing data</description>
+    </string>
+
+    <string>
+      <name>output_dir</name>
+      <label>output_dir</label>
+      <index>1</index>
+      <description>output directory</description>
+    </string>
+    
+    <string>
+      <name>data_type</name>
+      <label>data_type</label>
+      <index>2</index>
+      <description>type of input data</description>
+    </string>
+
+    <string>
+      <name>task</name>
+      <label>task</label>
+      <index>3</index>
+      <description>task: severity, binary, or regression</description>
+    </string>
+
+  </parameters>
+</executable>

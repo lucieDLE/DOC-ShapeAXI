@@ -1,0 +1,33 @@
+{
+    "2class_airways": {
+        "version": "1.0",
+        "url": ""
+    },
+
+    "4class_airways": {
+        "version": "1.0",
+        "url": ""
+    },
+    
+    "4reg_airways": {
+        "version": "1.0",
+        "url": ""
+    },
+    
+    
+    "4class_cleft": {
+        "version": "1.0",
+        "url": ""
+    },
+    
+
+    "2class_condyles": {
+        "version": "1.0",
+        "url": ""
+    },
+    
+    "4class_condyles": {
+        "version": "1.0",
+        "url": ""
+    }
+}
