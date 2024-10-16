@@ -1,2 +1,4 @@
 # exclude pycache (.pyc) files
 *.pyc
+*.log
+*.csv
