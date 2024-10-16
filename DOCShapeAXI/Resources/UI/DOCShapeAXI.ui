@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>688</width>
-    <height>831</height>
+    <height>897</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -16,8 +16,8 @@
     <height>4</height>
    </size>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
+  <layout class="QGridLayout" name="gridLayout_6">
+   <item row="0" column="0" colspan="2">
     <widget class="ctkCollapsibleButton" name="RequirementsCollapsibleButton">
      <property name="enabled">
       <bool>true</bool>
@@ -56,7 +56,7 @@
      </layout>
     </widget>
    </item>
-   <item>
+   <item row="1" column="0">
     <widget class="ctkCollapsibleButton" name="inputsCollapsibleButton">
      <property name="text">
       <string>Inputs</string>
@@ -131,7 +131,7 @@
      </layout>
     </widget>
    </item>
-   <item>
+   <item row="2" column="0">
     <widget class="ctkCollapsibleButton" name="outputsCollapsibleButton">
      <property name="text">
       <string>Outputs</string>
@@ -157,14 +157,14 @@
      </layout>
     </widget>
    </item>
-   <item>
+   <item row="3" column="0">
     <widget class="QPushButton" name="resetButton">
      <property name="text">
       <string>Reset</string>
      </property>
     </widget>
    </item>
-   <item>
+   <item row="4" column="0">
     <widget class="QPushButton" name="applyChangesButton">
      <property name="enabled">
       <bool>true</bool>
@@ -177,14 +177,14 @@
      </property>
     </widget>
    </item>
-   <item>
+   <item row="5" column="0">
     <widget class="QPushButton" name="cancelButton">
      <property name="text">
       <string>Cancel</string>
      </property>
     </widget>
    </item>
-   <item>
+   <item row="6" column="0">
     <widget class="QProgressBar" name="progressBar">
      <property name="enabled">
       <bool>false</bool>
@@ -200,7 +200,7 @@
      </property>
     </widget>
    </item>
-   <item>
+   <item row="7" column="0">
     <widget class="QLabel" name="progressLabel">
      <property name="enabled">
       <bool>false</bool>
@@ -213,7 +213,7 @@
      </property>
     </widget>
    </item>
-   <item>
+   <item row="8" column="0">
     <widget class="QLabel" name="doneLabel">
      <property name="enabled">
       <bool>false</bool>
@@ -226,7 +226,7 @@
      </property>
     </widget>
    </item>
-   <item>
+   <item row="9" column="0">
     <widget class="QLabel" name="timeLabel">
      <property name="enabled">
       <bool>false</bool>
@@ -239,7 +239,7 @@
      </property>
     </widget>
    </item>
-   <item>
+   <item row="10" column="0">
     <widget class="QLabel" name="labelBar">
      <property name="enabled">
       <bool>true</bool>
@@ -252,28 +252,41 @@
      </property>
     </widget>
    </item>
-   <item>
-    <widget class="QLabel" name="errorLabel">
-     <property name="enabled">
-      <bool>true</bool>
-     </property>
-     <property name="text">
-      <string>Error Message:</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>40</height>
-      </size>
-     </property>
-    </spacer>
+   <item row="11" column="0">
+    <layout class="QGridLayout" name="gridLayout_5">
+     <item row="0" column="0">
+      <widget class="QScrollArea" name="scrollArea">
+       <property name="widgetResizable">
+        <bool>true</bool>
+       </property>
+       <widget class="QWidget" name="scrollAreaWidgetContents_4">
+        <property name="geometry">
+         <rect>
+          <x>0</x>
+          <y>0</y>
+          <width>653</width>
+          <height>135</height>
+         </rect>
+        </property>
+        <layout class="QFormLayout" name="formLayout_4">
+         <item row="0" column="0" colspan="2">
+          <widget class="QLabel" name="errorLabel">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
+           <property name="text">
+            <string>Error Message:</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </widget>
+     </item>
+    </layout>
    </item>
   </layout>
  </widget>
