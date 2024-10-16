@@ -502,8 +502,7 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
               command.append("\""+arg+"\"")
 
             # running in // to not block Slicer
-            self.process = threading.Thread(target=self.conda.condaRunCommand, args=(command,))
-
+            self.process = threading.Thread(target=self.condaRunCommand, args=(command,))
             self.process.start()
             self.onProcessStarted()
 
