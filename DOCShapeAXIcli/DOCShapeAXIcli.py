@@ -23,7 +23,7 @@ from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 import vtk
 
-from shapeaxi import saxi_nets_lightning, post_process as psp, utils
+from shapeaxi import saxi_nets, post_process as psp, utils
 
 
 def gradcam_save(args, gradcam_path, surf_path, surf):
@@ -94,7 +94,7 @@ def saxi_gradcam(args, out_model_path):
   with open(args.log_path,'w+') as log_f :
     log_f.write(f"{args.task},explainability,NaN,{args.num_classes}")
 
-  NN = getattr(saxi_nets_lightning, args.nn)    
+  NN = getattr(saxi_nets, args.nn)    
   model = NN.load_from_checkpoint(out_model_path, strict=False)
   model.ico_sphere(radius=model.hparams.radius, subdivision_level=model.hparams.subdivision_level)
 
@@ -174,7 +174,7 @@ def saxi_predict(args,out_model_path):
       log_f.write(f"{args.task},predict,NaN,{args.num_classes}")
 
 
-    NN = getattr(saxi_nets_lightning, args.nn)
+    NN = getattr(saxi_nets, args.nn)
     model = NN.load_from_checkpoint(out_model_path, strict=False)
     model.eval()
     model.to(args.device)
@@ -249,11 +249,7 @@ def main(args):
   with open(args.log_path,'w') as log_f:
     log_f.truncate(0)
   
-  ## need to be improve
-  if os.path.splitext(args.model)[1] == '':
-    out_model_path = args.model + '.ckpt'
-  else:
-    out_model_path = args.model
+  out_model_path = os.path.join(args.output_dir, args.model + '.ckpt')
   
   if os.path.exists(args.output_dir):
     if not os.path.exists(out_model_path):
