@@ -672,12 +672,8 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                             # preexec_fn=os.setsid
                             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP  # For Windows
                             )
-    stdout,stderr = self.subpro.communicate()
-    if stdout:
-        print(f"Output: {stdout}")
-    if stderr:
-        print(f"Error: {stderr}")
-
+    self.stdout,self.stderr = self.subpro.communicate()
+    
     # return self.command_process
     # except Exception as e:
     #     print(f"An error occurred: {str(e)}")
@@ -722,12 +718,16 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
       self.ui.doneLabel.setText("Process cancelled by user")
       self.ui.doneLabel.setStyleSheet(f"""QLabel{{font-size: 20px; qproperty-alignment: AlignCenter; color:'red';}}""")
 
-      print("Process completed successfully.")
-    else:
+    elif self.stderr == '':
       self.ui.doneLabel.setText("Process completed successfully")
       self.ui.doneLabel.setStyleSheet(f"""QLabel{{font-size: 20px; qproperty-alignment: AlignCenter; color:'green';}}""")
 
-      print("Process completed successfully.")
+    else:
+
+      self.ui.doneLabel.setText("An error has occured.\nSee below the error message.")
+      self.ui.doneLabel.setStyleSheet(f"""QLabel{{font-size: 20px; qproperty-alignment: AlignCenter; color:'red';}}""")
+      self.ui.errorLabel.setText(self.stderr)
+      self.ui.errorLabel.setVisible(True)
 
     self.ui.applyChangesButton.setEnabled(True)
     self.ui.resetButton.setEnabled(True)
@@ -745,6 +745,7 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   def onReset(self):
     self.ui.outputLineEdit.setText("")
     self.ui.mountPointLineEdit.setText("")
+    self.ui.errorLabel.setText("Error: ")
     self.ui.errorLabel.setVisible(False)
 
     self.ui.applyChangesButton.setEnabled(True)
@@ -764,6 +765,7 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     self.subpro.send_signal(signal.CTRL_BREAK_EVENT)
     print("Cancellation requested. Terminating process...")
+    self.subpro.wait() ## important
 
     # output = self.subpro.stdout.readline()
     # if output:
