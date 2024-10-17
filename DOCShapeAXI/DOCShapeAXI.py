@@ -689,6 +689,7 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     self.ui.progressBar.setEnabled(False)
     self.ui.progressBar.setRange(0,100)
     self.removeObservers()  
+    self.ui.cancelButton.setEnabled(True)
 
   def onCancel(self):
     self.ui.labelBar.setText(f'Cancelling process...')
