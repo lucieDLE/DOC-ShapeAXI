@@ -119,7 +119,6 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     # UI elements 
 
-    self.ui.checkDependenciesButton.connect('clicked(bool)', self.onCheckRequirements)
     self.ui.browseDirectoryButton.connect('clicked(bool)',self.onBrowseOutputButton)
     self.ui.browseMountPointButton.connect('clicked(bool)',self.onBrowseMountPointButton)
     self.ui.cancelButton.connect('clicked(bool)', self.onCancel)

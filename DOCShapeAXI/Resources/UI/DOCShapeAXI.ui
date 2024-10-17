@@ -26,104 +26,12 @@
       <string>Requirements</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>check/install dependencies</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <layout class="QGridLayout" name="gridLayout_2"/>
-      </item>
-      <item row="3" column="1">
-       <widget class="QPushButton" name="checkDependenciesButton">
-        <property name="text">
-         <string>Install/check dependencies</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0" colspan="2">
+      <item row="1" column="0" colspan="2">
        <widget class="QLabel" name="labelInstructions">
         <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This module requires SlicerConda to works. Please see the &lt;a href=&quot;https://github.com/DCBIA-OrthoLab/SlicerConda&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;installation&lt;/span&gt;&lt;/a&gt;. If you already have set up SlicerConda you can use the button below to check if the required dependencies are installed. If not, the module will ask you permission to install them for you. If you are not sure if you have installed SlicerConda, you can check the dependencies and an error message will be display if SlicerConda is missing&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This module requires SlicerConda to work. Please see the &lt;a href=&quot;https://github.com/DCBIA-OrthoLab/SlicerConda&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;installation&lt;/span&gt;&lt;/a&gt;. If you already have set up SlicerConda, you can use the button below to check if the required dependencies are installed. If not, the module will ask for permission to install them for you. If you are not sure if you have installed SlicerConda, you can check the dependencies, and an error message will be displayed if SlicerConda is missing.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="wordWrap">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item row="1" column="0">
-    <widget class="ctkCollapsibleButton" name="inputsCollapsibleButton">
-     <property name="text">
-      <string>Inputs</string>
-     </property>
-     <layout class="QGridLayout" name="gridLayout">
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>Data Type</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QComboBox" name="dataTypeComboBox">
-        <item>
-         <property name="text">
-          <string>Mandibular Condyle</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Nasopharynx Airway Obstruction</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Alveolar Bone Defect in Cleft</string>
-         </property>
-        </item>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="mountPointLabel">
-        <property name="text">
-         <string>Input folder</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QLineEdit" name="mountPointLineEdit"/>
-      </item>
-      <item row="2" column="1">
-       <widget class="QPushButton" name="browseMountPointButton">
-        <property name="text">
-         <string>Select folder</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>Model</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <widget class="QCheckBox" name="checkBoxLatestModel">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="text">
-         <string>Use the latest version on Github</string>
-        </property>
-        <property name="checkable">
-         <bool>true</bool>
-        </property>
-        <property name="checked">
          <bool>true</bool>
         </property>
        </widget>
@@ -287,6 +195,81 @@
       </widget>
      </item>
     </layout>
+   </item>
+   <item row="1" column="0">
+    <widget class="ctkCollapsibleButton" name="inputsCollapsibleButton">
+     <property name="text">
+      <string>Inputs</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>Data Type</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="dataTypeComboBox">
+        <item>
+         <property name="text">
+          <string>Mandibular Condyle</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Nasopharynx Airway Obstruction</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Alveolar Bone Defect in Cleft</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="mountPointLabel">
+        <property name="text">
+         <string>Input folder</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="mountPointLineEdit"/>
+      </item>
+      <item row="2" column="1">
+       <widget class="QPushButton" name="browseMountPointButton">
+        <property name="text">
+         <string>Select folder</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>Model</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QCheckBox" name="checkBoxLatestModel">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Use the latest version on Github</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
    </item>
   </layout>
  </widget>
