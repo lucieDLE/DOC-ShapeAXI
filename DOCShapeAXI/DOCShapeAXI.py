@@ -595,25 +595,41 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     and cancel the process without blocking slicer
     '''
     path_activate = self.conda.getActivateExecutable()
-    user = self.conda.getUser()
 
     if path_activate=="None":
         return "Path to conda no setup"
 
-    if env_name == "None":
-        command_execute=""
-    else :
-        command_execute = f"source {path_activate} {env_name} &&"
-    for com in command :
-        command_execute = command_execute+ " "+com
+    if platform.system() == "Windows":
 
-    command_to_execute = ["wsl", "--user", user,"--","bash","-c", command_execute]
-    print("command_to_execute in condaRunCommand : ",command_to_execute)
+      if env_name == "None":
+          command_execute=""
+      else :
+          command_execute = f"source {path_activate} {env_name} &&"
+      for com in command :
+          command_execute = command_execute+ " "+com
 
-    self.subpro = subprocess.Popen(command_to_execute, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
-                            text=True, encoding='utf-8', errors='replace', env=slicer.util.startupEnvironment(),
-                            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP  # For Windows
-                            )
+      user = self.conda.getUser()
+      command_to_execute = ["wsl", "--user", user,"--","bash","-c", command_execute]
+      print("command_to_execute in condaRunCommand : ",command_to_execute)
+
+      self.subpro = subprocess.Popen(command_to_execute, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+                              text=True, encoding='utf-8', errors='replace', env=slicer.util.startupEnvironment(),
+                              creationflags=subprocess.CREATE_NEW_PROCESS_GROUP  # For Windows
+                              )
+    else:
+        
+      path_conda_exe = self.conda.getCondaExecutable()
+      if env_name != "None":
+          command_execute = f"{path_conda_exe} run -n {env_name}"
+      else :
+          command_execute = f"{path_conda_exe} run"
+      for com in command :
+          command_execute = command_execute+ " "+com
+
+      print("command_execute dans conda run : ",command_execute)
+      self.subpro = subprocess.Popen(command_execute, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8', errors='replace', env=slicer.util.startupEnvironment(),
+                              executable="/bin/bash", preexec_fn=os.setsid)
+  
 
     self.stdout,self.stderr = self.subpro.communicate()
     
@@ -694,7 +710,10 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
   def onCancel(self):
     self.ui.labelBar.setText(f'Cancelling process...')
 
-    self.subpro.send_signal(signal.CTRL_BREAK_EVENT)
+    if platform.system() == 'Windows':
+      self.subpro.send_signal(signal.CTRL_BREAK_EVENT)
+    else:
+      os.killpg(os.getpgid(self.subpro.pid), signal.SIGTERM)
     print("Cancellation requested. Terminating process...")
     self.subpro.wait() ## important
         
