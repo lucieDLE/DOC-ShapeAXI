@@ -28,19 +28,12 @@ class DOCShapeAXI(ScriptedLoadableModule):
     ScriptedLoadableModule.__init__(self, parent)
     self.parent.title = "DOCShapeAXI"  # TODO: make this more human readable by adding spaces
     # TODO: set categories (folders where the module shows up in the module selector)
-    self.parent.categories = ["Classification"]
+    self.parent.categories = ["Automated Dental Tools"]
     self.parent.dependencies = []  # TODO: add here list of module names that this module requires
     
-    self.parent.contributors = ["Mathieu Leclercq (University of North Carolina)", 
+    self.parent.contributors = ["Lucie Dole (University of North Carolina)", 
     "Juan Carlos Prieto (University of North Carolina)",
-    "Martin Styner (University of North Carolina)",
-    "Lucia Cevidanes (University of Michigan)",
-    "Beatriz Paniagua (Kitware)",
-    "Connor Bowley (Kitware)",
-    "Antonio Ruellas (University of Michigan)",
-    "Marcela Gurgel (University of Michigan)",
-    "Marilia Yatabe (University of Michigan)",
-    "Jonas Bianchi (University of Michigan)"] 
+    "Lucia Cevidanes (University of Michigan)"] 
     
     # TODO: update with short description of the module and a link to online module documentation
     self.parent.helpText = """
