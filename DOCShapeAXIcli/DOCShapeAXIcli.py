@@ -23,8 +23,29 @@ from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 import vtk
 
-from shapeaxi import saxi_nets, post_process as psp, utils
+from shapeaxi import saxi_nets_lightning, post_process as psp, utils
+from captum.attr import LayerGradCam
+import cv2
+import numpy as np
 
+def scale_cam_image(cam, target_size=None):
+    ## adapted from https://github.com/jacobgil/pytorch-grad-cam/blob/master/pytorch_grad_cam/utils/image.py#L162
+    result = []
+    for img in cam:
+      if target_size is not None:
+
+        img = cv2.resize(np.float32(img), target_size)
+
+        new_max = np.percentile(img.flatten(),q=99)
+        new_min = np.percentile(img.flatten(),q=1)
+        img = np.clip(img,new_min,new_max)
+
+        img =  2*((img - np.min(img)) / (np.max(img) -np.min(img))) -1 
+
+      result.append(img)
+    result = np.float32(result)
+
+    return result
 
 def gradcam_save(args, gradcam_path, surf_path, surf):
     '''
@@ -94,45 +115,29 @@ def saxi_gradcam(args, out_model_path):
   with open(args.log_path,'w+') as log_f :
     log_f.write(f"{args.task},explainability,NaN,{args.num_classes}")
 
-  NN = getattr(saxi_nets, args.nn)    
+  NN = getattr(saxi_nets_lightning, args.nn)    
   model = NN.load_from_checkpoint(out_model_path, strict=False)
-  model.ico_sphere(radius=model.hparams.radius, subdivision_level=model.hparams.subdivision_level)
 
   model.eval()
   model.to(args.device)
 
   fname = os.path.basename(args.input_csv)
   predicted_csv = os.path.join(args.output_dir, fname.replace('.csv', "_prediction.csv"))
-  df = pd.read_csv(predicted_csv)
-
-
-  model_cam_mv = nn.Sequential(
-      model.convnet,
-      model.ff_fb,
-      MultiHead(model.mha_fb),
-      SelfAttention(model.attn_fb),
-      nn.Linear(model.hparams.output_dim, args.num_classes)
-      )
-
-  model_cam_mv.to(args.device)
+  df_test = pd.read_csv(predicted_csv)
     
-  test_ds = SaxiDataset(df, transform=EvalTransform(), CN=True, 
-                        surf_column=model.hparams.surf_column, mount_point = args.input_dir, 
-                        class_column=None, scalar_column=model.hparams.scalar_column, **vars(args))
-  
-  test_loader = DataLoader(test_ds, batch_size=1, pin_memory=False)
+  test_ds = SaxiDataset(df_test, transform=EvalTransform(), CN=True, 
+                          surf_column=model.hparams.surf_column, mount_point = args.input_dir, 
+                          class_column=None, scalar_column=None, **vars(args))
+  test_loader = DataLoader(test_ds, batch_size=1, num_workers=4, pin_memory=False)
 
-  target_layer = getattr(model_cam_mv[0].module, '_blocks')
-  target_layers = None 
 
-  if isinstance(target_layer, nn.Sequential):
-      target_layer = target_layer[-1]
-      target_layers = [target_layer]
+  target_layer = getattr(model.convnet.module, '_blocks')
+  mv_cam = LayerGradCam(model,target_layer[-1],device_ids=[0])
 
-  cam = GradCAM(model=model_cam_mv, target_layers=target_layers)
-
-  targets = None
   out_dir = os.path.join(args.output_dir, "explainability", args.task)
+  if not os.path.exists(out_dir):
+      os.makedirs(out_dir)
+  targets = None
   
   for idx, (V, F, CN) in tqdm(enumerate(test_loader), total=len(test_loader)):
     # The generated CAM is processed and added to the input surface mesh (surf) as a point data array
@@ -141,26 +146,29 @@ def saxi_gradcam(args, out_model_path):
     CN = CN.to(args.device)
     
     X_mesh = model.create_mesh(V, F, CN)
+    X_pc = model.sample_points_from_meshes(X_mesh, model.hparams.sample_levels[0])  ## mhafb
     X_views, PF = model.render(X_mesh)
 
-    surf_path = os.path.join(args.input_dir, df.loc[idx]['surf'])
     surf = test_ds.getSurf(idx)
+    surf_path = test_ds.getSurfPath(idx)
 
+    args.target_class = None
     for class_idx in range(args.num_classes):
-      if args.nn == 'SaxiMHAFBRegression':
-        args.target_class = None
-      else:
+      if args.num_classes > 1:
         args.target_class = class_idx
-        targets = [ClassifierOutputTarget(args.target_class)]
+      mv_att = mv_cam.attribute(inputs=(X_pc,X_views), target=class_idx,attr_dim_summation=False)
+      # mv_att = multiview.attribute(inputs=(X_pc,X_views, x_v_fixed), target=class_idx,attr_dim_summation=False)
 
-      gcam_np = cam(input_tensor=X_views, targets=targets)
+      mv_att = mv_att.sum(dim=1).cpu().detach() ## LayerIntegratedGradients
 
-      Vcam = gradcam_process(args, gcam_np, F, PF, V, device='cuda')
+      mv_att_upscaled = scale_cam_image(mv_att.numpy(), target_size=(224,224))
+      mv_att_upscaled = gradcam_process(args, mv_att_upscaled, F, PF, V,device=args.device)
 
-      surf.GetPointData().AddArray(Vcam)
-      psp.MedianFilter(surf, Vcam)
+      surf.GetPointData().AddArray(mv_att_upscaled)
+      psp.MedianFilter(surf, mv_att_upscaled)
 
-    gradcam_save(args, out_dir, surf_path, surf)
+      out_surf_path = os.path.join(out_dir,os.path.basename(surf_path))
+      utils.WriteSurf(surf, out_surf_path)
     
     with open(args.log_path,'w+') as log_f :
       log_f.write(f"{args.task},explainability,{idx},{args.num_classes}")
@@ -174,7 +182,7 @@ def saxi_predict(args,out_model_path):
       log_f.write(f"{args.task},predict,NaN,{args.num_classes}")
 
 
-    NN = getattr(saxi_nets, args.nn)
+    NN = getattr(saxi_nets_lightning, args.nn)
     model = NN.load_from_checkpoint(out_model_path, strict=False)
     model.eval()
     model.to(args.device)
@@ -185,7 +193,7 @@ def saxi_predict(args,out_model_path):
     
     test_ds = SaxiDataset(df, transform=EvalTransform(scale_factor), CN=True, 
                           surf_column=model.hparams.surf_column, mount_point = args.input_dir, 
-                          class_column=None, scalar_column=model.hparams.scalar_column, **vars(args))
+                          class_column=None, scalar_column=None, **vars(args))
     
     test_loader = DataLoader(test_ds, batch_size=1, pin_memory=False)
 
@@ -199,9 +207,12 @@ def saxi_predict(args,out_model_path):
         V = V.to(args.device)
         F = F.to(args.device)
         CN = CN.to(args.device)
-        
+
         X_mesh = model.create_mesh(V, F, CN)
-        x, x_w, X = model(X_mesh)
+        X_pc = model.sample_points_from_meshes(X_mesh, model.hparams.sample_levels[0])
+        X_views, X_PF = model.render(X_mesh)
+
+        x = model(X_pc, X_views)
         
         if args.nn == 'SaxiMHAFBClassification': # no argmax for regression
           x = softmax(x).detach()
