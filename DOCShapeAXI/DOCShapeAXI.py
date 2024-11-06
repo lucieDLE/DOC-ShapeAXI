@@ -409,7 +409,7 @@ class DOCShapeAXIWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         previous_time = start_time
         formatted_time = self.format_time(0)
         self.ui.timeLabel.setText(f"Creation of the new environment. This task may take a few minutes.\ntime: {formatted_time}")
-        process = threading.Thread(target=self.conda.condaCreateEnv, args=(name_env,"3.9",["shapeaxi"],)) #run in parallel to not block slicer
+        process = threading.Thread(target=self.conda.condaCreateEnv, args=(name_env,"3.9",["shapeaxi==1.0.9"],)) #run in parallel to not block slicer
         process.start()
         
         while process.is_alive():
